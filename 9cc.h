@@ -6,32 +6,18 @@
 #include <string.h>
 
 typedef enum {
-    TK_RESERVED,  // 記号
-    TK_NUM,       // 整数トークン
-    TK_EOF,       // 入力の終わりを表すトークン
-} TokenKind;
-
-typedef enum {
-    ND_ADD,  // indicates +
-    ND_SUB,  // indicates -
-    ND_MUL,  // indicates *
-    ND_DIV,  // indicates /
-    ND_EQ,   // indicates ==
-    ND_NE,   // indicates ==
-    ND_LE,   // indicates <=
-    ND_LT,   // indicates <
-    ND_NUM,  // indicates a number
+    ND_ADD,     // +
+    ND_SUB,     // -
+    ND_MUL,     // *
+    ND_DIV,     // /
+    ND_EQ,      // ==
+    ND_NE,      // ==
+    ND_LE,      // <=
+    ND_LT,      // <
+    ND_ASSIGN,  // =
+    ND_LVAR,    // local variable
+    ND_NUM,     // number
 } NodeKind;
-
-typedef struct Token Token;
-
-struct Token {
-    TokenKind kind;
-    Token *next;
-    int val;
-    char *str;
-    int len;
-};
 
 typedef struct Node Node;
 
@@ -39,14 +25,18 @@ struct Node {
     NodeKind kind;
     Node *lhs;
     Node *rhs;
-    int val;
+    int val;     // used only if kind=ND_NUM
+    int offset;  // used only if kind=ND_LVAR
 };
 
 extern char *user_input;
-extern Token *token;
+extern Node *code[];
 
-Token *tokenize(char *p);
+void tokenize();
+void program();
+Node *stmt();
 Node *expr();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();

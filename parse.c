@@ -1,7 +1,25 @@
 #include "9cc.h"
 
+typedef enum {
+    TK_RESERVED,  // 記号
+    TK_IDENT,     // 識別子
+    TK_NUM,       // 整数トークン
+    TK_EOF,       // 入力の終わりを表すトークン
+} TokenKind;
+
+typedef struct Token Token;
+
+struct Token {
+    TokenKind kind;
+    Token *next;
+    int val;
+    char *str;
+    int len;
+};
+
 char *user_input;
 Token *token;
+Node *code[100];
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
@@ -18,6 +36,15 @@ bool consume(char *op) {
     return true;
 }
 
+Token *consume_ident() {
+    if (token->kind != TK_IDENT) {
+        return NULL;
+    }
+    Token *tok = token;
+    token = token->next;
+    return tok;
+}
+
 void expect(char *op) {
     if (token->kind != TK_RESERVED ||
         strlen(op) != token->len ||
@@ -28,7 +55,7 @@ void expect(char *op) {
 }
 
 int expect_number() {
-    if (token->kind !=TK_NUM) {
+    if (token->kind != TK_NUM) {
         error_at(token->str, "数ではありません");
     }
     int val = token->val;
@@ -53,14 +80,20 @@ bool startswith(char *p, char *q) {
     return memcmp(p, q, strlen(q)) == 0;
 }
 
-Token *tokenize(char *p) {
+void tokenize() {
     Token head;
     head.next = NULL;
     Token *cur = &head;
+    char *p = user_input;
 
     while (*p) {
         if (isspace(*p)) {
             p++;
+            continue;
+        }
+
+        if ('a' <= *p && *p <= 'z') {
+            cur = new_token(TK_IDENT, cur, p++, 1);
             continue;
         }
 
@@ -70,7 +103,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>", *p)) {
+        if (strchr("+-*/()<>=;", *p)) {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
             continue;
@@ -87,11 +120,34 @@ Token *tokenize(char *p) {
     }
 
     new_token(TK_EOF, cur, p, 0);
-    return head.next;
+    token = head.next;
+}
+
+
+void program() {
+    int i = 0;
+    while (!at_eof()) {
+        code[i++] = stmt();
+    }
+    code[i] = NULL;
+}
+
+Node *stmt() {
+    Node *node = expr();
+    expect(";");
+    return node;
 }
 
 Node *expr() {
-    return equality();
+    return assign();
+}
+
+Node *assign() {
+    Node *node = equality();
+    if (consume("=")) {
+        node = new_node(ND_ASSIGN, node, assign());
+    }
+    return node;
 }
 
 Node *equality() {
@@ -160,6 +216,13 @@ Node *primary() {
     if (consume("(")) {
         Node *node = expr();
         expect(")");
+        return node;
+    }
+    Token *tok = consume_ident();
+    if (tok) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LVAR;
+        node->offset = (tok->str[0] - 'a' + 1) * 8;
         return node;
     }
     return new_node_num(expect_number());
