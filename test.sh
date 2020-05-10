@@ -33,5 +33,9 @@ assert 1 "a = 1;"
 assert 8 "a=1; b=1; c = a + b; a = b + c; b = c + a; a + b;"
 assert 6 "foo = 1; bar = 2 + 3; return foo + bar;"
 assert 42 "return 42; return 420;"
+assert 42 "if (1) return 42;"
+assert 42 "if (1) return 42; else return 64;"
+assert 64 "if (0) return 42; else return 64;"
+assert  5 "num=10;if((num/3)*3 == num)return 3;else if((num/5)*5 == num)return 5;else return 0;"
 
 echo OK

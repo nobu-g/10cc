@@ -23,14 +23,27 @@ void program() {
 
 Node *stmt() {
     Node *node;
-    if(consume_stmt(TK_RETURN)) {
+    if (consume_stmt(TK_RETURN)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();
+    } else if (consume_stmt(TK_IF)) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_IF;
+        expect("(");
+        node->cond = expr();
+        expect(")");
+        node->then = stmt();
+        if (consume_stmt(TK_ELSE)) {
+            node->els = stmt();
+        }
+        return node;
     } else {
         node = expr();
     }
-    expect(";");
+    if (!consume(";")) {
+        error_at(token->str, "';'ではないトークンです");
+    }
     return node;
 }
 

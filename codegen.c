@@ -1,5 +1,8 @@
 #include "9cc.h"
 
+
+int label_cnt = 0;
+
 void gen_lval(Node *node) {
     if (node->kind != ND_LVAR) {
         error("代入の左辺値が変数ではありません");
@@ -9,16 +12,7 @@ void gen_lval(Node *node) {
     printf("  push rax\n");  // local variable のアドレスをスタックにpush
 }
 
-
 void gen(Node *node) {
-    if (node->kind == ND_RETURN) {
-        gen(node->lhs);
-        printf("  pop rax\n");
-        printf("  mov rsp, rbp\n");
-        printf("  pop rbp\n");
-        printf("  ret\n");
-        return;
-    }
     switch (node->kind) {
     case ND_NUM:
         printf("  push %d\n", node->val);
@@ -37,6 +31,30 @@ void gen(Node *node) {
         printf("  pop rax\n");  // 左辺値
         printf("  mov [rax], rdi\n");  // rdiの値をraxが指すメモリにコピー
         printf("  push rdi\n");  // 代入演算の結果を書き戻す
+        return;
+    case ND_RETURN:
+        gen(node->lhs);
+        printf("  pop rax\n");
+        printf("  mov rsp, rbp\n");
+        printf("  pop rbp\n");
+        printf("  ret\n");
+        return;
+    case ND_IF:
+        gen(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        int cur_label_cnt = label_cnt++;
+        if (node->els) {
+            printf("  je .Lelse%03d\n", cur_label_cnt);
+            gen(node->then);
+            printf("  jmp .Lend%03d\n", cur_label_cnt);
+            printf(".Lelse%03d:\n", cur_label_cnt);
+            gen(node->els);
+        } else {
+            printf("  je .Lend%03d\n", cur_label_cnt);
+            gen(node->then);
+        }
+        printf(".Lend%03d:\n", cur_label_cnt);
         return;
     }
 

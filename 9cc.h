@@ -17,6 +17,8 @@ typedef enum {
     TK_IDENT,    // 識別子
     TK_NUM,      // 整数トークン
     TK_RETURN,   // return
+    TK_IF,       // if
+    TK_ELSE,     // else
     TK_EOF,      // 入力の終わりを表すトークン
 } TokenKind;
 
@@ -49,6 +51,9 @@ typedef enum {
     ND_LT,      // <
     ND_ASSIGN,  // =
     ND_RETURN,  // return
+    ND_IF,      // if
+    ND_ELSE,    // else
+    ND_FOR,     // for
     ND_LVAR,    // local variable
     ND_NUM,     // number
 } NodeKind;
@@ -57,8 +62,19 @@ typedef struct Node Node;
 
 struct Node {
     NodeKind kind;
+    // used for binary operators
     Node *lhs;
     Node *rhs;
+
+    // used for 'if' statement
+    Node *cond;
+    Node *then;
+    Node *els;
+
+    // used for 'for' statement
+    Node *init;
+    Node *upd;
+
     int val;     // used only if kind=ND_NUM
     int offset;  // used only if kind=ND_LVAR
 };
@@ -71,7 +87,7 @@ extern Token *token;
 void tokenize();
 
 bool consume(char *op);
-bool consume_stmt(int kind);
+bool consume_stmt(TokenKind kind);
 Token *consume_ident();
 void expect(char *op);
 int expect_number();

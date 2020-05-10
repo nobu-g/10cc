@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     printf("main:\n");
 
     // prologue
-    // 変数26個分の領域を確保する
+    // ローカル変数の領域を確保する
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", locals->offset);
