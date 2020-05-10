@@ -81,6 +81,11 @@ void gen(Node *node) {
         printf("  jmp .Lbegin%03d\n", cur_label_cnt);
         printf(".Lend%03d:\n", cur_label_cnt);
         return;
+    case ND_BLOCK:
+        for (int i = 0; i < node->stmts->len; i++) {
+            gen(node->stmts->data[i]);
+        }
+        return;
     }
 
     gen(node->lhs);

@@ -39,5 +39,7 @@ assert 64 "if (0) return 42; else return 64;"
 assert  5 "num=10;if((num/3)*3 == num)return 3;else if((num/5)*5 == num)return 5;else return 0;"
 assert 10 "a = 0; while (a < 10) a = a + 1;"
 assert 55 "total = 0; for (i=1; i <= 10; i=i+1) total = total + i; return total;"
+assert 0 "{0; 0;}"
+assert 110 "total = 0; for (i=1; i <= 10; i=i+1) {total = total + i; total = total + i;} return total;"
 
 echo OK

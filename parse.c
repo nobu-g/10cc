@@ -23,7 +23,15 @@ void program() {
 
 Node *stmt() {
     Node *node;
-    if (consume_stmt(TK_RETURN)) {
+    if (consume("{")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_BLOCK;
+        node->stmts = create_vector();
+        while(!consume("}")) {
+            push(node->stmts, (void *) stmt());
+        }
+        return node;
+    } else if (consume_stmt(TK_RETURN)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();

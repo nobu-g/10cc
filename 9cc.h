@@ -12,6 +12,15 @@ void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);
 bool is_alnum(char c);
 
+typedef struct {
+    void **data;
+    int capacity;
+    int len;
+} Vector;
+
+Vector *create_vector();
+void push(Vector *vec, void *elem);
+
 typedef enum {
     TK_RESERVED, // 記号
     TK_IDENT,    // 識別子
@@ -57,6 +66,7 @@ typedef enum {
     ND_ELSE,    // else
     ND_WHILE,   // while
     ND_FOR,     // for
+    ND_BLOCK,   // block
     ND_LVAR,    // local variable
     ND_NUM,     // number
 } NodeKind;
@@ -77,6 +87,9 @@ struct Node {
     // used for 'for' statement
     Node *init;
     Node *upd;
+
+    // used for block
+    Vector *stmts;
 
     int val;     // used only if kind=ND_NUM
     int offset;  // used only if kind=ND_LVAR
