@@ -25,6 +25,7 @@ typedef enum {
     ND_LE,      // <=
     ND_LT,      // <
     ND_ASSIGN,  // =
+    ND_RETURN,  // return
     ND_LVAR,    // local variable
     ND_NUM,     // number
 } NodeKind;
