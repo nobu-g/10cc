@@ -1,25 +1,6 @@
 #include "9cc.h"
 
-typedef enum {
-    TK_RESERVED, // 記号
-    TK_IDENT,    // 識別子
-    TK_NUM,      // 整数トークン
-    TK_RETURN,   // return
-    TK_EOF,      // 入力の終わりを表すトークン
-} TokenKind;
 
-typedef struct Token Token;
-
-struct Token {
-    TokenKind kind;
-    Token *next;
-    int val;
-    char *str;
-    int len;
-};
-
-char *user_input;
-Token *token;
 Node *code[100];
 LVar *locals; // local varables
 
@@ -28,123 +9,7 @@ Node *new_node_num(int val);
 void error_at(char *loc, char *fmt, ...);
 LVar *find_lvar(Token *tok);
 
-// returns True if the current token is op
-bool consume(char *op) {
-    if(token->kind != TK_RESERVED || strlen(op) != token->len ||
-       memcmp(token->str, op, token->len) != 0) {
-        return false;
-    }
-    token = token->next;
-    return true;
-}
-
-bool consume_stmt(int kind) {
-    if(token->kind != kind) {
-        return false;
-    }
-    token = token->next;
-    return true;
-}
-
-Token *consume_ident() {
-    if(token->kind != TK_IDENT) {
-        return NULL;
-    }
-    Token *tok = token;
-    token = token->next;
-    return tok;
-}
-
-void expect(char *op) {
-    if(token->kind != TK_RESERVED || strlen(op) != token->len ||
-       memcmp(token->str, op, token->len) != 0) {
-        error_at(token->str, "'%s'ではありません", op);
-    }
-    token = token->next;
-}
-
-int expect_number() {
-    if(token->kind != TK_NUM) {
-        error_at(token->str, "数ではありません");
-    }
-    int val = token->val;
-    token = token->next;
-    return val;
-}
-
-bool at_eof() { return token->kind == TK_EOF; }
-
-Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
-    Token *tok = calloc(1, sizeof(Token));
-    tok->kind = kind;
-    tok->str = str;
-    tok->len = len;
-    cur->next = tok;
-    return tok;
-}
-
-bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
-
-bool is_alnum(char c) {
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-           ('0' <= c && c <= '9') || (c == '_');
-}
-
-void tokenize() {
-    Token head;
-    head.next = NULL;
-    Token *cur = &head;
-    char *p = user_input;
-
-    while(*p) {
-        if(isspace(*p)) {
-            p++;
-            continue;
-        }
-
-        if(strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
-            cur = new_token(TK_RETURN, cur, p, 6);
-            p += 6;
-            continue;
-        }
-
-        if('a' <= *p && *p <= 'z') {
-            int len = 1;
-            while(('a' <= *(p + len) && *(p + len) <= 'z') ||
-                  ('0' <= *(p + len) && *(p + len) <= '9')) {
-                len++;
-            }
-            cur = new_token(TK_IDENT, cur, p, len);
-            p += len;
-            continue;
-        }
-
-        if(startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") ||
-           startswith(p, ">=")) {
-            cur = new_token(TK_RESERVED, cur, p, 2);
-            p += 2;
-            continue;
-        }
-
-        if(strchr("+-*/()<>=;", *p)) {
-            cur = new_token(TK_RESERVED, cur, p, 1);
-            p++;
-            continue;
-        }
-
-        if(isdigit(*p)) {
-            char *tmp = p;
-            int val = strtol(p, &p, 10);
-            cur = new_token(TK_NUM, cur, p, p - tmp);
-            cur->val = val;
-            continue;
-        }
-        error_at(p, "トークナイズできません");
-    }
-
-    new_token(TK_EOF, cur, p, 0);
-    token = head.next;
-}
+bool at_eof();
 
 void program() {
     LVar dummy = {NULL, "", 0, 0};
@@ -156,11 +21,6 @@ void program() {
     code[i] = NULL;
 }
 
-// Node *stmt() {
-//     Node *node = expr();
-//     expect(";");
-//     return node;
-// }
 Node *stmt() {
     Node *node;
     if(consume_stmt(TK_RETURN)) {
@@ -289,19 +149,6 @@ Node *new_node_num(int val) {
     return node;
 }
 
-void error_at(char *loc, char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-
-    int pos = loc - user_input;
-    fprintf(stderr, "%s\n", user_input);
-    fprintf(stderr, "%*s", pos, ""); // pos個の空白を出力
-    fprintf(stderr, "^ ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    exit(1);
-}
-
 LVar *find_lvar(Token *tok) {
     for(LVar *var = locals; var; var = var->next) {
         if(var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
@@ -310,3 +157,5 @@ LVar *find_lvar(Token *tok) {
     }
     return NULL;
 }
+
+bool at_eof() { return token->kind == TK_EOF; }
