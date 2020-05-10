@@ -31,5 +31,6 @@ assert 0 "(1 <= ((2*4) - 1)) - (1 > 0) * 1 * 1;"
 assert 0 "(1 < (5 + -10) * 2) == (10 < (120 - 60));"
 assert 1 "a = 1;"
 assert 8 "a=1; b=1; c = a + b; a = b + c; b = c + a; a + b;"
+assert 6 "foo = 1; bar = 2 + 3; foo + bar;"
 
 echo OK
