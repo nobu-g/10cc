@@ -1,4 +1,4 @@
-#include "9cc.h"
+#include "10cc.h"
 
 
 Node *code[100];

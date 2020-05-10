@@ -1,4 +1,4 @@
-#include "9cc.h"
+#include "10cc.h"
 
 int INITIAL_VECTOR_SIZE = 32;
 
