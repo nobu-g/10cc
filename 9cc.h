@@ -20,6 +20,7 @@ typedef enum {
     TK_IF,       // if
     TK_ELSE,     // else
     TK_WHILE,    // while
+    TK_FOR,      // for
     TK_EOF,      // 入力の終わりを表すトークン
 } TokenKind;
 
