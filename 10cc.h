@@ -52,23 +52,24 @@ struct LVar {
 };
 
 typedef enum {
-    ND_ADD,     // +
-    ND_SUB,     // -
-    ND_MUL,     // *
-    ND_DIV,     // /
-    ND_EQ,      // ==
-    ND_NE,      // ==
-    ND_LE,      // <=
-    ND_LT,      // <
-    ND_ASSIGN,  // =
-    ND_RETURN,  // return
-    ND_IF,      // if
-    ND_ELSE,    // else
-    ND_WHILE,   // while
-    ND_FOR,     // for
-    ND_BLOCK,   // block
-    ND_LVAR,    // local variable
-    ND_NUM,     // number
+    ND_ADD,        // +
+    ND_SUB,        // -
+    ND_MUL,        // *
+    ND_DIV,        // /
+    ND_EQ,         // ==
+    ND_NE,         // ==
+    ND_LE,         // <=
+    ND_LT,         // <
+    ND_ASSIGN,     // =
+    ND_RETURN,     // return
+    ND_IF,         // if
+    ND_ELSE,       // else
+    ND_WHILE,      // while
+    ND_FOR,        // for
+    ND_BLOCK,      // block
+    ND_FUNC_CALL,  // function call
+    ND_LVAR,       // local variable
+    ND_NUM,        // number
 } NodeKind;
 
 typedef struct Node Node;
@@ -90,6 +91,10 @@ struct Node {
 
     // used for block
     Vector *stmts;
+
+    // used for function
+    char *name;
+    Vector *args;
 
     int val;     // used only if kind=ND_NUM
     int offset;  // used only if kind=ND_LVAR

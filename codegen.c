@@ -1,5 +1,7 @@
 #include "10cc.h"
 
+int num_argregs = 6;
+char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_cnt = 0;
 
@@ -17,6 +19,16 @@ void gen(Node *node) {
     switch (node->kind) {
     case ND_NUM:
         printf("  push %d\n", node->val);
+        return;
+    case ND_FUNC_CALL:
+        for (int i = 0; i < node->args->len; i++) {
+            gen(node->args->data[i]);
+        }
+        for (int i = node->args->len - 1; 0 <= i ; i--) {
+            printf("  pop %s\n", argregs[i]);  // 0 origin
+        }
+        printf("  call var\n");
+        printf("  ret\n");
         return;
     case ND_LVAR:
         gen_lval(node);
