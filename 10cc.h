@@ -107,9 +107,7 @@ extern Token *token;
 
 void tokenize();
 
-bool consume(char *op);
-bool consume_stmt(TokenKind kind);
-Token *consume_ident();
+Token *consume(TokenKind kind, char *str);
 void expect(char *op);
 int expect_number();
 

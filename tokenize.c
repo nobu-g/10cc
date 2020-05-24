@@ -4,28 +4,18 @@
 char *user_input;
 Token *token;
 
-// returns True if the current token is op
-bool consume(char *op) {
-    if(token->kind != TK_RESERVED || strlen(op) != token->len ||
-       memcmp(token->str, op, token->len) != 0) {
-        return false;
-    }
-    token = token->next;
-    return true;
-}
 
-bool consume_stmt(TokenKind kind) {
-    if(token->kind != kind) {
-        return false;
-    }
-    token = token->next;
-    return true;
-}
-
-Token *consume_ident() {
-    if(token->kind != TK_IDENT) {
+Token *consume(TokenKind kind, char *str) {
+    if (token->kind != kind) {
         return NULL;
     }
+
+    if (str != NULL) {
+        if (strlen(str) != token->len || memcmp(token->str, str, token->len) != 0) {
+            return NULL;
+        }
+    }
+
     Token *tok = token;
     token = token->next;
     return tok;
