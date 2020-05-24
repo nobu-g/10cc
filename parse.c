@@ -2,7 +2,7 @@
 
 
 Node *code[100];
-LVar *locals; // local varables
+Map *locals;  // local varables
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
@@ -12,8 +12,7 @@ LVar *find_lvar(Token *tok);
 bool at_eof();
 
 void program() {
-    LVar dummy = {NULL, "", 0, 0};
-    locals = &dummy;
+    locals = create_map();
     int i = 0;
     while(!at_eof()) {
         code[i++] = stmt();
@@ -76,7 +75,7 @@ Node *stmt() {
         node = expr();
     }
     if (!consume(TK_RESERVED, ";")) {
-        error_at(token->str, "';'ではないトークンです");
+        error_at(token->loc, "';'ではないトークンです");
     }
     return node;
 }
@@ -171,17 +170,14 @@ Node *primary() {
             }
         } else {
             node->kind = ND_LVAR;
-            LVar *lvar = find_lvar(tok);
+            LVar *lvar = get_elem_from_map(locals, tok->str);
             if (lvar) {
                 node->offset = lvar->offset;
             } else {
                 lvar = calloc(1, sizeof(LVar));
-                lvar->next = locals;
-                lvar->name = tok->str;
-                lvar->len = tok->len;
-                lvar->offset = locals->offset + 8;
+                lvar->offset = (locals->len + 1) * 8;
                 node->offset = lvar->offset;
-                locals = lvar;
+                add_elem_to_map(locals, tok->str, lvar);
             }
         }
         return node;
@@ -207,15 +203,6 @@ Node *new_node_num(int val) {
     node->kind = ND_NUM;
     node->val = val;
     return node;
-}
-
-LVar *find_lvar(Token *tok) {
-    for(LVar *var = locals; var; var = var->next) {
-        if(var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
-            return var;
-        }
-    }
-    return NULL;
 }
 
 bool at_eof() { return token->kind == TK_EOF; }

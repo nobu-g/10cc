@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
     // ローカル変数の領域を確保する
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", locals->offset);
+    printf("  sub rsp, %d\n", (locals->len + 1) * 8);  // offset
 
     // 先頭の式から順にコード生成
     for (int i = 0; code[i]; i++) {

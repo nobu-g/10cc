@@ -1,6 +1,5 @@
 #include "10cc.h"
 
-
 char *user_input;
 Token *token;
 
@@ -11,7 +10,7 @@ Token *consume(TokenKind kind, char *str) {
     }
 
     if (str != NULL) {
-        if (strlen(str) != token->len || memcmp(token->str, str, token->len) != 0) {
+        if (strcmp(token->str, str) != 0) {
             return NULL;
         }
     }
@@ -21,17 +20,16 @@ Token *consume(TokenKind kind, char *str) {
     return tok;
 }
 
-void expect(char *op) {
-    if(token->kind != TK_RESERVED || strlen(op) != token->len ||
-       memcmp(token->str, op, token->len) != 0) {
-        error_at(token->str, "'%s'ではありません", op);
+void expect(char *str) {
+    if(token->kind != TK_RESERVED || strcmp(token->str, str) != 0) {
+        error_at(token->loc, "'%s'ではありません", str);
     }
     token = token->next;
 }
 
 int expect_number() {
     if(token->kind != TK_NUM) {
-        error_at(token->str, "数ではありません");
+        error_at(token->loc, "数ではありません");
     }
     int val = token->val;
     token = token->next;
@@ -40,9 +38,14 @@ int expect_number() {
 
 Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
+
+    char *name = calloc(len + 1, sizeof(char));
+    strncpy(name, str, len);
+    name[len] = '\0';
+
     tok->kind = kind;
-    tok->str = str;
-    tok->len = len;
+    tok->str = name;
+    tok->loc = str;
     cur->next = tok;
     return tok;
 }

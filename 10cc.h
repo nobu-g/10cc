@@ -21,6 +21,16 @@ typedef struct {
 Vector *create_vector();
 void push(Vector *vec, void *elem);
 
+typedef struct {
+    Vector *keys;
+    Vector *vals;
+    int len;
+} Map;
+
+Map *create_map();
+void add_elem_to_map(Map *map, char *key, void *val);
+void *get_elem_from_map(Map *map, char *key);
+
 typedef enum {
     TK_RESERVED, // 記号
     TK_IDENT,    // 識別子
@@ -40,7 +50,7 @@ struct Token {
     Token *next;
     int val;
     char *str;
-    int len;
+    char *loc;
 };
 
 // ローカル変数の型
@@ -102,7 +112,7 @@ struct Node {
 
 extern char *user_input;
 extern Node *code[];
-extern LVar *locals;
+extern Map *locals;
 extern Token *token;
 
 void tokenize();
