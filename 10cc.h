@@ -63,12 +63,10 @@ struct LVar {
 
 // 関数の型
 struct Func {
-  Func *next; // 次の関数かNULL
-  char *name; // 関数の名前
-  Vector *lvars;  // ローカル変数
-//   Vector *args;  // 引数
-//   int len;    // 名前の長さ
-//   int offset; // RBPからのオフセット
+  char *name;  // 関数の名前
+  Map *lvars;  // ローカル変数(args含む) (Map<char *, LVar *>)
+  Vector *args;  // 引数 (Vector<LVar *>)
+  Vector *body;  // 実装 (Vector<Node *>)
 };
 
 typedef enum {
@@ -125,7 +123,7 @@ struct Node {
 };
 
 extern char *user_input;
-extern Node *code[];
+extern Vector *code;
 extern Map *locals;
 extern Token *token;
 
@@ -136,7 +134,7 @@ void expect(char *op);
 int expect_number();
 
 void program();
-Node *func();
+Func *func();
 Node *stmt();
 Node *expr();
 Node *assign();

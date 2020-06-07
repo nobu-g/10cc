@@ -147,40 +147,33 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-void gen_func(Node *func) {
-    printf("\n%s:\n", func->name);
+void gen_func(Func *f) {
+    printf(".global %s\n", f->name);
+    printf("\n%s:\n", f->name);
 
     // prologue
     // ローカル変数の領域を確保する
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", func->lvars->len * 8);
+    printf("  sub rsp, %d\n", f->lvars->len * 8);
 
     // 引数の値を stack に push してローカル変数と同じように扱えるように
-    for(int i = 0; i < func->args->len; i++) {
+    for(int i = 0; i < f->args->len; i++) {
         printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
-        Vector *args = func->args;
-        LVar *arg = args->data[i];
-        // LVar *arg_by_map = get_elem_from_map(node->lvars, arg->name);
+        LVar *arg = f->args->data[i];
         printf("  sub rax, %d\n", arg->offset); // raxをoffsetだけ移動
         printf("  mov [rax], %s\n", argregs[i]); // 第 i 引数の値をraxが指すメモリにコピー
     }
 
     // 中身のコードを吐く
-    gen(func->impl);
+    for (int i = 0; i < f->body->len; i++) {
+        gen(f->body->data[i]);
+    }
 }
 
 void gen_x86() {
-    // header
     printf(".intel_syntax noprefix\n");
-    printf(".global %s", code[0]->name);
-    for(int i = 1; code[i]; i++) {
-        printf(", %s", code[i]->name);
-    }
-    printf("\n");
-
-    // 関数ごとにコードを生成
-    for(int i = 0; code[i]; i++) {
-        gen_func(code[i]);
+    for(int i = 0; i < code->len; i++) {
+        gen_func(code->data[i]);
     }
 }

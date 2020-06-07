@@ -1,8 +1,7 @@
 #include "10cc.h"
 
-
-Node *code[100];
-Map *locals;  // local varables
+Func *f;
+Vector *code;
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
@@ -11,39 +10,35 @@ LVar *find_lvar(Token *tok);
 
 bool at_eof();
 
-
 void program() {
-    int i = 0;
+    code = create_vector();
     while(!at_eof()) {
-        code[i++] = func();
+        push(code, func());
     }
-    code[i] = NULL;
 }
 
-Node *func() {
-    locals = create_map();
-    Node *node = calloc(1, sizeof(Node));
+Func *func() {
+    f = calloc(1, sizeof(Func));
     Token *tok = consume(TK_IDENT, NULL);
     if (!tok) {
         error("関数名ではありません");
     }
-    node->kind = ND_FUNC_DEF;
-    node->name = tok->str;
+    f->name = tok->str;
+    f->lvars = create_map();
+    f->args = create_vector();
     expect("(");
-    Vector *args = create_vector();
     for(;;) {
         Token *tok = consume(TK_IDENT, NULL);
         if (tok) {
-            LVar *arg = get_elem_from_map(locals, tok->str);
+            LVar *arg = get_elem_from_map(f->lvars, tok->str);
             if (arg) {
                 error("引数に同じ識別子は使用できません");
             }
             arg = calloc(1, sizeof(LVar));
             arg->name = tok->str;
-            arg->offset = (locals->len + 1) * 8;
-            // node->offset = lvar->offset;
-            add_elem_to_map(locals, tok->str, arg);
-            push(args, arg);
+            arg->offset = (f->lvars->len + 1) * 8;
+            push(f->args, arg);
+            add_elem_to_map(f->lvars, arg->name, arg);
             if (!consume(TK_RESERVED, ",")) {
                 break;
             }
@@ -51,12 +46,13 @@ Node *func() {
             break;
         }
     }
-    node->args = args;
     expect(")");
-    node->lvars = locals;
-    node->impl = stmt();
-
-    return node;
+    expect("{");
+    f->body = create_vector();
+    while (!consume(TK_RESERVED, "}")) {
+        push(f->body, stmt());
+    }
+    return f;
 }
 
 Node *stmt() {
@@ -209,14 +205,14 @@ Node *primary() {
             }
         } else {
             node->kind = ND_LVAR;
-            LVar *lvar = get_elem_from_map(locals, tok->str);
+            LVar *lvar = get_elem_from_map(f->lvars, tok->str);
             if (lvar) {
                 node->offset = lvar->offset;
             } else {
                 lvar = calloc(1, sizeof(LVar));
-                lvar->offset = (locals->len + 1) * 8;
+                lvar->offset = (f->lvars->len + 1) * 8;
                 node->offset = lvar->offset;
-                add_elem_to_map(locals, tok->str, lvar);
+                add_elem_to_map(f->lvars, tok->str, lvar);
             }
         }
         return node;
