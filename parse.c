@@ -11,13 +11,52 @@ LVar *find_lvar(Token *tok);
 
 bool at_eof();
 
+
 void program() {
-    locals = create_map();
     int i = 0;
     while(!at_eof()) {
-        code[i++] = stmt();
+        code[i++] = func();
     }
     code[i] = NULL;
+}
+
+Node *func() {
+    locals = create_map();
+    Node *node = calloc(1, sizeof(Node));
+    Token *tok = consume(TK_IDENT, NULL);
+    if (!tok) {
+        error("関数名ではありません");
+    }
+    node->kind = ND_FUNC_DEF;
+    node->name = tok->str;
+    expect("(");
+    Vector *args = create_vector();
+    for(;;) {
+        Token *tok = consume(TK_IDENT, NULL);
+        if (tok) {
+            LVar *arg = get_elem_from_map(locals, tok->str);
+            if (arg) {
+                error("引数に同じ識別子は使用できません");
+            }
+            arg = calloc(1, sizeof(LVar));
+            arg->name = tok->str;
+            arg->offset = (locals->len + 1) * 8;
+            // node->offset = lvar->offset;
+            add_elem_to_map(locals, tok->str, arg);
+            push(args, arg);
+            if (!consume(TK_RESERVED, ",")) {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    node->args = args;
+    expect(")");
+    node->lvars = locals;
+    node->impl = stmt();
+
+    return node;
 }
 
 Node *stmt() {
@@ -182,7 +221,7 @@ Node *primary() {
         }
         return node;
     }
-    if(consume(TK_RESERVED, "(")) {
+    if (consume(TK_RESERVED, "(")) {
         Node *node = expr();
         expect(")");
         return node;

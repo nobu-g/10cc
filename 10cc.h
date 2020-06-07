@@ -6,6 +6,7 @@
 #include <string.h>
 
 typedef struct LVar LVar;
+typedef struct Func Func;
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
@@ -55,10 +56,19 @@ struct Token {
 
 // ローカル変数の型
 struct LVar {
-  LVar *next; // 次の変数かNULL
   char *name; // 変数の名前
   int len;    // 名前の長さ
   int offset; // RBPからのオフセット
+};
+
+// 関数の型
+struct Func {
+  Func *next; // 次の関数かNULL
+  char *name; // 関数の名前
+  Vector *lvars;  // ローカル変数
+//   Vector *args;  // 引数
+//   int len;    // 名前の長さ
+//   int offset; // RBPからのオフセット
 };
 
 typedef enum {
@@ -78,6 +88,7 @@ typedef enum {
     ND_FOR,        // for
     ND_BLOCK,      // block
     ND_FUNC_CALL,  // function call
+    ND_FUNC_DEF,   // function definition
     ND_LVAR,       // local variable
     ND_NUM,        // number
 } NodeKind;
@@ -86,6 +97,7 @@ typedef struct Node Node;
 
 struct Node {
     NodeKind kind;
+
     // used for binary operators
     Node *lhs;
     Node *rhs;
@@ -100,11 +112,13 @@ struct Node {
     Node *upd;
 
     // used for block
-    Vector *stmts;
+    Vector *stmts;  // Vector<Node *>
 
     // used for function
     char *name;
-    Vector *args;
+    Vector *args;  // Vector<LVar *>
+    Map *lvars;  // Map<char *, LVar *>
+    Node *impl;
 
     int val;     // used only if kind=ND_NUM
     int offset;  // used only if kind=ND_LVAR
@@ -122,6 +136,7 @@ void expect(char *op);
 int expect_number();
 
 void program();
+Node *func();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -132,4 +147,4 @@ Node *mul();
 Node *unary();
 Node *primary();
 
-void gen(Node *node);
+void gen_x86();
