@@ -182,6 +182,10 @@ Node *unary() {
         return primary();
     } else if(consume(TK_RESERVED, "-")) {
         return new_node(ND_SUB, new_node_num(0), primary());
+    } else if(consume(TK_RESERVED, "&")) {
+        return new_node(ND_ADDR, NULL, unary());
+    } else if(consume(TK_RESERVED, "*")) {
+        return new_node(ND_DEREF, NULL, unary());
     } else {
         return primary();
     }

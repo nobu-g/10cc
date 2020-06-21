@@ -89,6 +89,8 @@ typedef enum {
     ND_FUNC_DEF,   // function definition
     ND_LVAR,       // local variable
     ND_NUM,        // number
+    ND_ADDR,       // unary &
+    ND_DEREF,      // unary *
 } NodeKind;
 
 typedef struct Node Node;

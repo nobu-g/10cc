@@ -12,10 +12,10 @@ assert() {
   actual="$?"
 
   if [[ "$actual" = "$expected" ]]; then
-    echo "OK $input => $actual"
+    echo "[PASSED] $input => $actual"
     return 0
   else
-    echo "NG $input => $expected expected, but got $actual"
+    echo "[FAILED] $input => $expected expected, but got $actual"
     return 1
   fi
 }
@@ -35,3 +35,4 @@ assert 10 "main() {a = 0; while (a < 10) a = a + 1; return a;}"
 assert 55 "main() {total = 0; for (i=1; i <= 10; i=i+1) total = total + i; return total;}"
 assert 110 "main() {total = 0; for (i=1; i <= 10; i=i+1) {total = total + i; total = total + i;} return total;}"
 assert 13 "fibo(n) {if (n < 2) return 1; else return fibo(n-2) + fibo(n-1);} main() {return fibo(6);}"
+assert 3 "main() {x = 3; y = &x; return *y;}"
