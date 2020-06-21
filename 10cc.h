@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// #define DEBUG
+
 typedef struct LVar LVar;
 typedef struct Func Func;
 
@@ -56,13 +58,6 @@ struct Token {
     char *loc;
 };
 
-// ローカル変数の型
-struct LVar {
-    char *name; // 変数の名前
-    int len;    // 名前の長さ
-    int offset; // RBPからのオフセット
-};
-
 struct Type {
     enum {INT, PTR} ty;
     int size;  // INT: 4, PTR: 8
@@ -75,7 +70,7 @@ typedef struct Type Type;
 // 関数の型
 struct Func {
     char *name;  // 関数の名前
-    Map *lvars;  // ローカル変数(args含む) (Map<char *, LVar *>)
+    Map *lvars;  // ローカル変数(args含む) (Map<char *, Node *>)
     Vector *args;  // 引数 (Vector<Node *>)
     Vector *body;  // 実装 (Vector<Node *>)
     Type *ret_type;  // 戻り値の型
@@ -132,7 +127,7 @@ struct Node {
     Node *impl;
 
     int val;     // used only if kind=ND_NUM
-    Type *ty;
+    Type *ty;    // used only if kind=ND_NUM or kind=ND_LVAR
     int offset;  // used only if kind=ND_LVAR
 };
 
