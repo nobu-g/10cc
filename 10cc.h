@@ -42,7 +42,8 @@ typedef enum {
     TK_WHILE,    // while
     TK_FOR,      // for
     TK_EOF,      // 入力の終わりを表すトークン
-    TK_SIZEOF    // sizeof
+    TK_INT,      // int
+    TK_SIZEOF,   // sizeof
 } TokenKind;
 
 typedef struct Token Token;
@@ -57,22 +58,27 @@ struct Token {
 
 // ローカル変数の型
 struct LVar {
-  char *name; // 変数の名前
-  int len;    // 名前の長さ
-  int offset; // RBPからのオフセット
-};
-
-// 関数の型
-struct Func {
-  char *name;  // 関数の名前
-  Map *lvars;  // ローカル変数(args含む) (Map<char *, LVar *>)
-  Vector *args;  // 引数 (Vector<LVar *>)
-  Vector *body;  // 実装 (Vector<Node *>)
+    char *name; // 変数の名前
+    int len;    // 名前の長さ
+    int offset; // RBPからのオフセット
 };
 
 struct Type {
     enum {INT, PTR} ty;
+    int size;  // INT: 4, PTR: 8
+
     struct Type *ptr_to;
+};
+
+typedef struct Type Type;
+
+// 関数の型
+struct Func {
+    char *name;  // 関数の名前
+    Map *lvars;  // ローカル変数(args含む) (Map<char *, LVar *>)
+    Vector *args;  // 引数 (Vector<Node *>)
+    Vector *body;  // 実装 (Vector<Node *>)
+    Type *ret_type;  // 戻り値の型
 };
 
 typedef enum {
@@ -122,12 +128,11 @@ struct Node {
 
     // used for function
     char *name;
-    Vector *args;  // Vector<LVar *>
-    Map *lvars;  // Map<char *, LVar *>
+    Vector *args;  // Vector<Node *>
     Node *impl;
 
     int val;     // used only if kind=ND_NUM
-    struct Type ty;
+    Type *ty;
     int offset;  // used only if kind=ND_LVAR
 };
 

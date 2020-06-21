@@ -10,6 +10,9 @@ LVar *find_lvar(Token *tok);
 
 bool at_eof();
 
+/**
+ * program = func*
+ */
 void program() {
     code = create_vector();
     while(!at_eof()) {
@@ -17,47 +20,72 @@ void program() {
     }
 }
 
+/**
+ * func = stmt*
+ */
 Func *func() {
     f = calloc(1, sizeof(Func));
-    Token *tok = consume(TK_IDENT, NULL);
-    if(tok) {
-        if(!strcmp(tok->str, "int")) {
-            tok = consume(TK_IDENT, NULL);
-            if(!tok) {
-                error("関数名ではありません");
+    Token *tok = consume(TK_INT, NULL);
+    if (tok) {
+        f->ret_type = calloc(1, sizeof(Type));
+        f->ret_type->ty = INT;
+        f->ret_type->size = 4;
+        for (;;) {
+            if(consume(TK_RESERVED, "*")) {
+                Type *type_ = calloc(1, sizeof(Type));
+                type_->ty = PTR;
+                type_->size = 8;
+                type_->ptr_to = f->ret_type;
+                f->ret_type = type_;
+            } else {
+                break;
             }
-        } else {
-            error("有効な型ではありません");
+        }
+        tok = consume(TK_IDENT, NULL);
+        if(!tok) {
+            error("関数名ではありません");
         }
     } else {
-        error("型が未定義です");
+        error("有効な型ではありません");
     }
     f->name = tok->str;
     f->lvars = create_map();
     f->args = create_vector();
     expect("(");
     for(;;) {
-        Token *tok = consume(TK_IDENT, NULL); // 型を読み込む
+        Token *tok = consume(TK_INT, NULL);
         if(tok) {
-            if(!strcmp(tok->str, "int")) {
-                tok = consume(TK_IDENT, NULL);
-                if(!tok) {
-                    error("変数名ではありません");
-                }
-                LVar *arg = get_elem_from_map(f->lvars, tok->str);
-                if(arg) {
-                    error("引数に同じ識別子は使用できません");
-                }
-                arg = calloc(1, sizeof(LVar));
-                arg->name = tok->str;
-                arg->offset = (f->lvars->len + 1) * 8;
-                push(f->args, arg);
-                add_elem_to_map(f->lvars, arg->name, arg);
-                if(!consume(TK_RESERVED, ",")) {
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_LVAR;
+            node->ty = calloc(1, sizeof(Type));
+            node->ty->ty = INT;
+            node->ty->size = 4;
+            for(;;) {
+                if(consume(TK_RESERVED, "*")) {
+                    Type *type_ = calloc(1, sizeof(Type));
+                    type_->ty = PTR;
+                    type_->size = 8;
+                    type_->ptr_to = node->ty;
+                    node->ty = type_;
+                } else {
                     break;
                 }
-            } else {
-                error("有効な型ではありません");
+            }
+            tok = consume(TK_IDENT, NULL);
+            if(!tok) {
+                error("変数名ではありません");
+            }
+            LVar *lvar = get_elem_from_map(f->lvars, tok->str);
+            if(lvar) {
+                error("変数 %s はすでに宣言されています", tok->str);
+            }
+            lvar = calloc(1, sizeof(LVar));
+            lvar->offset = (f->lvars->len + 1) * 8;
+            node->offset = lvar->offset;
+            push(f->args, node);
+            add_elem_to_map(f->lvars, tok->str, lvar);
+            if(!consume(TK_RESERVED, ",")) {
+                break;
             }
         } else {
             break;
@@ -72,6 +100,14 @@ Func *func() {
     return f;
 }
 
+/**
+* stmt = expr ";"
+*      | "{" stmt* "}"
+*      | "if" "(" expr ")" stmt ("else" stmt)?
+*      | "while" "(" expr ")" stmt
+*      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+*      | "return" expr ";"
+*/
 Node *stmt() {
     Node *node;
     if(consume(TK_RESERVED, "{")) {
@@ -134,6 +170,9 @@ Node *stmt() {
 
 Node *expr() { return assign(); }
 
+/**
+ * assign = equality ("=" assign)?
+ */
 Node *assign() {
     Node *node = equality();
     if(consume(TK_RESERVED, "=")) {
@@ -142,6 +181,9 @@ Node *assign() {
     return node;
 }
 
+/**
+ * add = mul ("+" unary | "-" unary)*
+ */
 Node *equality() {
     Node *node = relational();
     if(consume(TK_RESERVED, "==")) {
@@ -153,6 +195,9 @@ Node *equality() {
     }
 }
 
+/**
+ * relational = add (("<=" | ">=" | "<" | ">") add)?
+ */
 Node *relational() {
     Node *node = add();
     if(consume(TK_RESERVED, "<=")) {
@@ -168,6 +213,9 @@ Node *relational() {
     }
 }
 
+/**
+ * add = mul ("+" unary | "-" unary)*
+ */
 Node *add() {
     Node *node = mul();
     for(;;) {
@@ -181,6 +229,9 @@ Node *add() {
     }
 }
 
+/*
+ * mul = unary (("*" | "/") unary)*
+ */
 Node *mul() {
     Node *node = unary();
     for(;;) {
@@ -194,6 +245,10 @@ Node *mul() {
     }
 }
 
+/*
+ * unary = "sizeof" unary
+ *       | ("+" | "-" | "&" | "*")? primary
+ */
 Node *unary() {
     if(consume(TK_RESERVED, "+")) {
         return primary();
@@ -210,10 +265,52 @@ Node *unary() {
     }
 }
 
+/**
+ * primary = num              // 即値
+ *         | ident ("(" ")")  // 変数参照 or 関数呼び出し
+ *         | "int" ident      // 変数定義
+ *         | "(" expr ")"     // 括弧
+ */
 Node *primary() {
-    Token *tok = consume(TK_IDENT, NULL);
+    // 変数宣言
+    Token *tok = consume(TK_INT, NULL);
     if(tok) {
         Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_LVAR;
+        node->ty = calloc(1, sizeof(Type));
+        node->ty->ty = INT;
+        node->ty->size = 4;
+        for(;;) {
+            if(consume(TK_RESERVED, "*")) {
+                Type *type_ = calloc(1, sizeof(Type));
+                type_->ty = PTR;
+                type_->size = 8;
+                type_->ptr_to = node->ty;
+                node->ty = type_;
+            } else {
+                break;
+            }
+        }
+        tok = consume(TK_IDENT, NULL);
+        if(!tok) {
+            error("変数名ではありません");
+        }
+        LVar *lvar = get_elem_from_map(f->lvars, tok->str);
+        if(lvar) {
+            error("変数 %s はすでに宣言されています", tok->str);
+        }
+        lvar = calloc(1, sizeof(LVar));
+        lvar->offset = (f->lvars->len + 1) * 8;
+        node->offset = lvar->offset;
+        add_elem_to_map(f->lvars, tok->str, lvar);
+        return node;
+    }
+
+    // 変数参照 or 関数呼び出し
+    tok = consume(TK_IDENT, NULL);
+    if (tok) {
+        Node *node = calloc(1, sizeof(Node));
+        // 関数呼び出し
         if(consume(TK_RESERVED, "(")) {
             node->kind = ND_FUNC_CALL;
             node->name = tok->str;
@@ -226,24 +323,14 @@ Node *primary() {
                 push(node->args, arg);
                 consume(TK_RESERVED, ",");
             }
+        // 変数参照
         } else {
             node->kind = ND_LVAR;
             LVar *lvar = get_elem_from_map(f->lvars, tok->str);
-            if(lvar) {
+            if (lvar) {
                 node->offset = lvar->offset;
             } else {
-                if(!strcmp(tok->str, "int")) {
-                    tok = consume(TK_IDENT, NULL);
-                    if(!tok) {
-                        error("変数名ではありません");
-                    }
-                    lvar = calloc(1, sizeof(LVar));
-                    lvar->offset = (f->lvars->len + 1) * 8;
-                    node->offset = lvar->offset;
-                    add_elem_to_map(f->lvars, tok->str, lvar);
-                } else {
-                    error("%sは未定義です", tok->str);
-                }
+                error("%sは未定義です", tok->str);
             }
         }
         return node;

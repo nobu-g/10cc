@@ -36,3 +36,4 @@ assert 55 "int main() {int total; int i; total = 0; for (i=1; i <= 10; i=i+1) to
 assert 110 "int main() {int total; int i; total = 0; for (i=1; i <= 10; i=i+1) {total = total + i; total = total + i;} return total;}"
 assert 13 "int fibo(int n) {if (n < 2) return 1; else return fibo(n-2) + fibo(n-1);} int main() {return fibo(6);}"
 assert 3 "int main() {int x; int y; x = 3; y = &x; return *y;}"
+assert 42 "int ***ptr() {int foo; int *var; return 42;} int main() {int *****a; return ptr();}"

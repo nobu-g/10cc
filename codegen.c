@@ -169,7 +169,7 @@ void gen_func(Func *f) {
     // 引数の値を stack に push してローカル変数と同じように扱えるように
     for(int i = 0; i < f->args->len; i++) {
         printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
-        LVar *arg = f->args->data[i];
+        Node *arg = f->args->data[i];
         printf("  sub rax, %d\n", arg->offset); // raxをoffsetだけ移動
         printf("  mov [rax], %s\n", argregs[i]); // 第 i 引数の値をraxが指すメモリにコピー
     }
