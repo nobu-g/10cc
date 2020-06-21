@@ -20,27 +20,44 @@ void program() {
 Func *func() {
     f = calloc(1, sizeof(Func));
     Token *tok = consume(TK_IDENT, NULL);
-    if (!tok) {
-        error("関数名ではありません");
+    if(tok) {
+        if(!strcmp(tok->str, "int")) {
+            tok = consume(TK_IDENT, NULL);
+            if(!tok) {
+                error("関数名ではありません");
+            }
+        } else {
+            error("有効な型ではありません");
+        }
+    } else {
+        error("型が未定義です");
     }
     f->name = tok->str;
     f->lvars = create_map();
     f->args = create_vector();
     expect("(");
     for(;;) {
-        Token *tok = consume(TK_IDENT, NULL);
-        if (tok) {
-            LVar *arg = get_elem_from_map(f->lvars, tok->str);
-            if (arg) {
-                error("引数に同じ識別子は使用できません");
-            }
-            arg = calloc(1, sizeof(LVar));
-            arg->name = tok->str;
-            arg->offset = (f->lvars->len + 1) * 8;
-            push(f->args, arg);
-            add_elem_to_map(f->lvars, arg->name, arg);
-            if (!consume(TK_RESERVED, ",")) {
-                break;
+        Token *tok = consume(TK_IDENT, NULL); // 型を読み込む
+        if(tok) {
+            if(!strcmp(tok->str, "int")) {
+                tok = consume(TK_IDENT, NULL);
+                if(!tok) {
+                    error("変数名ではありません");
+                }
+                LVar *arg = get_elem_from_map(f->lvars, tok->str);
+                if(arg) {
+                    error("引数に同じ識別子は使用できません");
+                }
+                arg = calloc(1, sizeof(LVar));
+                arg->name = tok->str;
+                arg->offset = (f->lvars->len + 1) * 8;
+                push(f->args, arg);
+                add_elem_to_map(f->lvars, arg->name, arg);
+                if(!consume(TK_RESERVED, ",")) {
+                    break;
+                }
+            } else {
+                error("有効な型ではありません");
             }
         } else {
             break;
@@ -49,7 +66,7 @@ Func *func() {
     expect(")");
     expect("{");
     f->body = create_vector();
-    while (!consume(TK_RESERVED, "}")) {
+    while(!consume(TK_RESERVED, "}")) {
         push(f->body, stmt());
     }
     return f;
@@ -57,30 +74,30 @@ Func *func() {
 
 Node *stmt() {
     Node *node;
-    if (consume(TK_RESERVED, "{")) {
+    if(consume(TK_RESERVED, "{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
         node->stmts = create_vector();
         while(!consume(TK_RESERVED, "}")) {
-            push(node->stmts, (void *) stmt());
+            push(node->stmts, (void *)stmt());
         }
         return node;
-    } else if (consume(TK_RETURN, NULL)) {
+    } else if(consume(TK_RETURN, NULL)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();
-    } else if (consume(TK_IF, NULL)) {
+    } else if(consume(TK_IF, NULL)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF;
         expect("(");
         node->cond = expr();
         expect(")");
         node->then = stmt();
-        if (consume(TK_ELSE, NULL)) {
+        if(consume(TK_ELSE, NULL)) {
             node->els = stmt();
         }
         return node;
-    } else if (consume(TK_WHILE, NULL)) {
+    } else if(consume(TK_WHILE, NULL)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
         expect("(");
@@ -88,19 +105,19 @@ Node *stmt() {
         expect(")");
         node->then = stmt();
         return node;
-    } else if (consume(TK_FOR, NULL)) {
+    } else if(consume(TK_FOR, NULL)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR;
         expect("(");
-        if (!consume(TK_RESERVED, ";")) {
+        if(!consume(TK_RESERVED, ";")) {
             node->init = expr();
             expect(";");
         }
-        if (!consume(TK_RESERVED, ";")) {
+        if(!consume(TK_RESERVED, ";")) {
             node->cond = expr();
             expect(";");
         }
-        if (!consume(TK_RESERVED, ";")) {
+        if(!consume(TK_RESERVED, ";")) {
             node->upd = expr();
         }
         expect(")");
@@ -109,7 +126,7 @@ Node *stmt() {
     } else {
         node = expr();
     }
-    if (!consume(TK_RESERVED, ";")) {
+    if(!consume(TK_RESERVED, ";")) {
         error_at(token->loc, "';'ではないトークンです");
     }
     return node;
@@ -186,6 +203,8 @@ Node *unary() {
         return new_node(ND_ADDR, NULL, unary());
     } else if(consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, NULL, unary());
+    } else if(consume(TK_SIZEOF, NULL)) {
+        // ここで unary を作って型をチェック -> int にする
     } else {
         return primary();
     }
@@ -193,14 +212,14 @@ Node *unary() {
 
 Node *primary() {
     Token *tok = consume(TK_IDENT, NULL);
-    if (tok) {
+    if(tok) {
         Node *node = calloc(1, sizeof(Node));
-        if (consume(TK_RESERVED, "(")) {
+        if(consume(TK_RESERVED, "(")) {
             node->kind = ND_FUNC_CALL;
             node->name = tok->str;
             node->args = create_vector();
             for(;;) {
-                if (consume(TK_RESERVED, ")")) {
+                if(consume(TK_RESERVED, ")")) {
                     break;
                 }
                 Node *arg = expr();
@@ -210,18 +229,26 @@ Node *primary() {
         } else {
             node->kind = ND_LVAR;
             LVar *lvar = get_elem_from_map(f->lvars, tok->str);
-            if (lvar) {
+            if(lvar) {
                 node->offset = lvar->offset;
             } else {
-                lvar = calloc(1, sizeof(LVar));
-                lvar->offset = (f->lvars->len + 1) * 8;
-                node->offset = lvar->offset;
-                add_elem_to_map(f->lvars, tok->str, lvar);
+                if(!strcmp(tok->str, "int")) {
+                    tok = consume(TK_IDENT, NULL);
+                    if(!tok) {
+                        error("変数名ではありません");
+                    }
+                    lvar = calloc(1, sizeof(LVar));
+                    lvar->offset = (f->lvars->len + 1) * 8;
+                    node->offset = lvar->offset;
+                    add_elem_to_map(f->lvars, tok->str, lvar);
+                } else {
+                    error("%sは未定義です", tok->str);
+                }
             }
         }
         return node;
     }
-    if (consume(TK_RESERVED, "(")) {
+    if(consume(TK_RESERVED, "(")) {
         Node *node = expr();
         expect(")");
         return node;
