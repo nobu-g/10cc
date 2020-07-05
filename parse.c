@@ -1,8 +1,8 @@
 #include "10cc.h"
 
 Func *f;
-Map *funcs;
-Vector *code;
+Map *funcs;   // Map<char *, Func>
+Vector *code; // Vector<Func>
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
@@ -11,6 +11,8 @@ Node *new_node_func_call(char *name, Vector *args, Type *type);
 void error_at(char *loc, char *fmt, ...);
 
 bool at_eof();
+int get_offset(Type *type, Map *lvars);
+Node *ary_to_ptr(Node *node);
 
 /**
  * program = func*
@@ -78,8 +80,9 @@ Func *func() {
             if(get_elem_from_map(f->lvars, tok->str)) {
                 error("変数 %s はすでに宣言されています", tok->str);
             }
-            int offset = (f->lvars->len + 1) * 8;
-            Node *node = new_node_lvar(type, offset);
+            // int offset = (f->lvars->len + 1) * 8;
+            // Node *node = new_node_lvar(type, offset);
+            Node *node = new_node_lvar(type, get_offset(type, f->lvars));
             push(f->args, node);
             add_elem_to_map(f->lvars, tok->str, node);
             if(!consume(TK_RESERVED, ",")) {
@@ -272,7 +275,12 @@ Node *unary() {
     } else if(consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, unary(), NULL);
     } else if(consume(TK_SIZEOF, NULL)) {
-        return new_node_num(unary()->ty->size);
+        Node *node = unary();
+        if(node->ty->ty == ARRAY) {
+            return new_node_num(node->ty->array_size * node->ty->ptr_to->size);
+        } else {
+            return new_node_num(node->ty->size);
+        }
     } else {
         return primary();
     }
@@ -291,9 +299,10 @@ Node *primary() {
         Type *type = calloc(1, sizeof(Type));
         type->ty = INT;
         type->size = 4;
+        Type *type_;
         for(;;) {
             if(consume(TK_RESERVED, "*")) {
-                Type *type_ = calloc(1, sizeof(Type));
+                type_ = calloc(1, sizeof(Type));
                 type_->ty = PTR;
                 type_->size = 8;
                 type_->ptr_to = type;
@@ -309,8 +318,15 @@ Node *primary() {
         if(get_elem_from_map(f->lvars, tok->str)) {
             error("変数 %s はすでに宣言されています", tok->str);
         }
-        int offset = (f->lvars->len + 1) * 8;
-        Node *node = new_node_lvar(type, offset);
+        if(consume(TK_RESERVED, "[")) {
+            type_ = calloc(1, sizeof(Type));
+            type_->ty = ARRAY;
+            type_->ptr_to = type;
+            type = type_;
+            type_->array_size = expect_number();
+            expect("]");
+        }
+        Node *node = new_node_lvar(type, get_offset(type, f->lvars));
         add_elem_to_map(f->lvars, tok->str, node);
         return node;
     }
@@ -361,6 +377,16 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     node->kind = kind;
     node->lhs = lhs;
     node->rhs = rhs;
+
+    if(kind != ND_ADDR) {
+        if (node->lhs && node->lhs->kind == ND_LVAR && node->lhs->ty->ty == ARRAY) {
+            node->lhs = ary_to_ptr(node->lhs);
+        }
+        if (node->rhs && node->rhs->kind == ND_LVAR && node->rhs->ty->ty == ARRAY) {
+            node->rhs = ary_to_ptr(node->rhs);
+        }
+    }
+
     switch(kind) {
     case ND_ADD:
     case ND_SUB:
@@ -377,6 +403,9 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
         node->ty->ty = PTR;
         node->ty->size = 8;
         node->ty->ptr_to = lhs->ty;
+        break;
+    case ND_DEREF:
+        node->ty = node->lhs->ty->ptr_to;
         break;
     default:
         break;
@@ -426,3 +455,32 @@ Node *new_node_num(int val) {
 }
 
 bool at_eof() { return token->kind == TK_EOF; }
+
+int get_offset(Type *type, Map *lvars) {
+    int offset = 0;
+    for (int i = 0; i < lvars->len; i++) {
+        Node *node = lvars->vals->data[i];
+        if (node->ty->ty == ARRAY) {
+            offset += node->ty->array_size * 8;
+        } else {
+            offset += 8;
+        }
+    }
+    if (type->ty == ARRAY) {
+        offset += type->array_size * 8;
+    } else {
+        offset += 8;
+    }
+    return offset;
+}
+
+Node *ary_to_ptr(Node *node) {
+    if (node->ty->ty != ARRAY) {
+        error("配列ではありません");
+    }
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = PTR;
+    ty->size = 8;
+    ty->ptr_to = node->ty->ptr_to;
+    return new_node_lvar(ty, node->offset);  // ここがまずい。array の offset は先頭要素にすべき？
+}

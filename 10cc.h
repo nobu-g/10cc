@@ -10,11 +10,6 @@
 typedef struct LVar LVar;
 typedef struct Func Func;
 
-void error(char *fmt, ...);
-void error_at(char *loc, char *fmt, ...);
-bool startswith(char *p, char *q);
-bool is_alnum(char c);
-
 typedef struct {
     void **data;
     int capacity;
@@ -59,45 +54,43 @@ struct Token {
 };
 
 struct Type {
-    enum {INT, PTR} ty;
+    enum { INT, PTR, ARRAY } ty;
     int size;  // INT: 4, PTR: 8
-
     struct Type *ptr_to;
+    size_t array_size;
 };
 
 typedef struct Type Type;
 
 // 関数の型
 struct Func {
-    char *name;  // 関数の名前
-    Map *lvars;  // ローカル変数(args含む) (Map<char *, Node *>)
-    Vector *args;  // 引数 (Vector<Node *>)
-    Vector *body;  // 実装 (Vector<Node *>)
-    Type *ret_type;  // 戻り値の型
+    char *name;     // 関数の名前
+    Map *lvars;     // ローカル変数(args含む) (Map<char *, Node *>)
+    Vector *args;   // 引数 (Vector<Node *>)
+    Vector *body;   // 実装 (Vector<Node *>)
+    Type *ret_type; // 戻り値の型
 };
 
 typedef enum {
-    ND_ADD,        // +
-    ND_SUB,        // -
-    ND_MUL,        // *
-    ND_DIV,        // /
-    ND_EQ,         // ==
-    ND_NE,         // ==
-    ND_LE,         // <=
-    ND_LT,         // <
-    ND_ASSIGN,     // =
-    ND_RETURN,     // return
-    ND_IF,         // if
-    ND_ELSE,       // else
-    ND_WHILE,      // while
-    ND_FOR,        // for
-    ND_BLOCK,      // block
-    ND_FUNC_CALL,  // function call
-    ND_FUNC_DEF,   // function definition
-    ND_LVAR,       // local variable
-    ND_NUM,        // number
-    ND_ADDR,       // unary &
-    ND_DEREF,      // unary *
+    ND_ADD,       // +
+    ND_SUB,       // -
+    ND_MUL,       // *
+    ND_DIV,       // /
+    ND_EQ,        // ==
+    ND_NE,        // ==
+    ND_LE,        // <=
+    ND_LT,        // <
+    ND_ASSIGN,    // =
+    ND_RETURN,    // return
+    ND_IF,        // if
+    ND_WHILE,     // while
+    ND_FOR,       // for
+    ND_BLOCK,     // block
+    ND_FUNC_CALL, // function call
+    ND_LVAR,      // local variable
+    ND_NUM,       // number
+    ND_ADDR,      // unary &
+    ND_DEREF,     // unary *
 } NodeKind;
 
 typedef struct Node Node;
@@ -119,21 +112,20 @@ struct Node {
     Node *upd;
 
     // used for block
-    Vector *stmts;  // Vector<Node *>
+    Vector *stmts; // Vector<Node *>
 
     // used for function
     char *name;
-    Vector *args;  // Vector<Node *>
+    Vector *args; // Vector<Node *>
     Node *impl;
 
-    int val;     // used only if kind=ND_NUM
-    Type *ty;    // used only if kind=ND_NUM or kind=ND_LVAR
-    int offset;  // used only if kind=ND_LVAR
+    int val;    // used only if kind=ND_NUM
+    Type *ty;   // used only if kind=ND_NUM or kind=ND_LVAR
+    int offset; // used only if kind=ND_LVAR
 };
 
 extern char *user_input;
 extern Vector *code;
-extern Map *locals;
 extern Token *token;
 
 void tokenize();
@@ -155,3 +147,10 @@ Node *unary();
 Node *primary();
 
 void gen_x86();
+
+void error(char *fmt, ...);
+void error_at(char *loc, char *fmt, ...);
+bool startswith(char *p, char *q);
+bool is_alnum(char c);
+void draw_node_tree(Node *node, int depth, char *prefix);
+void draw_ast();

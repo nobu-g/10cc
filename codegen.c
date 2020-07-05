@@ -5,9 +5,10 @@ char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_cnt = 0;
 
+// node が指す local variable の "スタック上のアドレス" をスタックに push する
 void gen_lval(Node *node) {
     if(node->kind != ND_LVAR) {
-        error("代入の左辺値が変数ではありません");
+        error("代入の左辺値が変数ではありません: %d", node->kind);
     }
     printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
     printf("  sub rax, %d\n", node->offset); // raxをoffsetだけ移動
@@ -31,16 +32,19 @@ void gen(Node *node) {
         printf("  call %s\n", node->name);
         printf("  push rax\n");
         return;
-    case ND_LVAR:
+    case ND_LVAR:  // node にアクセスして中身をスタックに push
         gen_lval(node);
         printf("  pop rax\n"); // local variable のアドレスをraxにpop
         printf("  mov rax, [rax]\n"); // raxの指す先にアクセスして中身をraxにコピー
         printf("  push rax\n"); // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
-        gen_lval(node->lhs);
+        if (node->lhs->kind == ND_DEREF) {
+            gen(node->lhs->lhs);  // node->lhs->lhs: ポインタ型 local variable
+        } else {
+            gen_lval(node->lhs);
+        }
         gen(node->rhs);
-
         printf("  pop rdi\n");        // 右辺値
         printf("  pop rax\n");        // 左辺値
         printf("  mov [rax], rdi\n"); // rdiの値をraxが指すメモリにコピー
@@ -103,8 +107,8 @@ void gen(Node *node) {
     case ND_ADDR:
         gen_lval(node->lhs);
         return;
-    case ND_DEREF:
-        gen(node->lhs);
+    case ND_DEREF:  // 右辺値参照
+        gen(node->lhs);  // アドレスがスタックに積まれる
         printf("  pop rax\n");
         printf("  mov rax, [rax]\n");
         printf("  push rax\n");

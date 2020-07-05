@@ -7,8 +7,8 @@ assert() {
   input="$2"
 
   ./10cc "$input" > tmp.s
-  cc -c tmp.s  # -> tmp.o
-  cc -c helper.c  # -> helper.o
+  cc -c tmp.s    # -> tmp.o
+  cc -c helper.c # -> helper.o
   cc -o tmp tmp.o helper.o
   # cc -o tmp tmp.s
   ./tmp
@@ -45,7 +45,7 @@ assert 110 "int main() {int total; int i; total = 0; for (i=1; i <= 10; i=i+1) {
 assert 2 "int bar(int m) {return m+1;} int foo(int n) {return bar(n+1);} int main() {return foo(0);}"
 assert 24 "int fact(int n) {if (n < 2) return 1; else return n * fact(n-1);} int main() {return fact(4);}"
 assert 13 "int fibo(int n) {if (n < 2) return 1; else return fibo(n-2) + fibo(n-1);} int main() {return fibo(6);}"
-assert 3 "int main() {int x; int y; x = 3; y = &x; return *y;}"
+assert 3 "int main() {int x; int *y; x = 3; y = &x; return *y;}"
 assert 42 "int ***ptr() {int foo; int *var; return 42;} int main() {int *****a; return ptr();}"
 assert 1 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &b; int *q; q = p + 2; return *q;}"
 assert 2 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &c; int *q; q = p + 2; return *q;}"
@@ -56,3 +56,8 @@ assert 4 "int main() {int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return 
 assert 4 "int main() {return sizeof(4);}"
 assert 8 "int main() {int *a; return sizeof(a);}"
 assert 8 "int main() {int a; a = 42; return sizeof(&a);}"
+assert 0 "int main() {int a[10]; return 0;}"
+assert 40 "int main() {int a[10]; return sizeof(a);}"
+assert 1 "int main() {int b; int *a; a = &b; *a = 1; return 1;}"
+assert 4 "int main() {int a[10]; *a = 4; return 4;}"
+assert 3 "int main() {int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1);}"
