@@ -29,14 +29,14 @@ void program() {
 Func *func() {
     f = calloc(1, sizeof(Func));
     Token *tok = consume(TK_INT, NULL);
-    if (!tok) {
+    if(!tok) {
         error("有効な型ではありません");
     }
     f->ret_type = calloc(1, sizeof(Type));
     f->ret_type->ty = INT;
     f->ret_type->size = 4;
-    for (;;) {
-        if (consume(TK_RESERVED, "*")) {
+    for(;;) {
+        if(consume(TK_RESERVED, "*")) {
             Type *type_ = calloc(1, sizeof(Type));
             type_->ty = PTR;
             type_->size = 8;
@@ -47,16 +47,16 @@ Func *func() {
         }
     }
     tok = consume(TK_IDENT, NULL);
-    if (!tok) {
+    if(!tok) {
         error("関数名ではありません");
     }
     f->name = tok->str;
     f->lvars = create_map();
     f->args = create_vector();
     expect("(");
-    for (;;) {
+    for(;;) {
         Token *tok = consume(TK_INT, NULL);
-        if (tok) {
+        if(tok) {
             Type *type = calloc(1, sizeof(Type));
             type->ty = INT;
             type->size = 4;
@@ -72,17 +72,17 @@ Func *func() {
                 }
             }
             tok = consume(TK_IDENT, NULL);
-            if (!tok) {
+            if(!tok) {
                 error("変数名ではありません");
             }
-            if (get_elem_from_map(f->lvars, tok->str)) {
+            if(get_elem_from_map(f->lvars, tok->str)) {
                 error("変数 %s はすでに宣言されています", tok->str);
             }
             int offset = (f->lvars->len + 1) * 8;
             Node *node = new_node_lvar(type, offset);
             push(f->args, node);
             add_elem_to_map(f->lvars, tok->str, node);
-            if (!consume(TK_RESERVED, ",")) {
+            if(!consume(TK_RESERVED, ",")) {
                 break;
             }
         } else {
@@ -100,13 +100,13 @@ Func *func() {
 }
 
 /**
-* stmt = expr ";"
-*      | "{" stmt* "}"
-*      | "if" "(" expr ")" stmt ("else" stmt)?
-*      | "while" "(" expr ")" stmt
-*      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-*      | "return" expr ";"
-*/
+ * stmt = expr ";"
+ *      | "{" stmt* "}"
+ *      | "if" "(" expr ")" stmt ("else" stmt)?
+ *      | "while" "(" expr ")" stmt
+ *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+ *      | "return" expr ";"
+ */
 Node *stmt() {
     Node *node;
     if(consume(TK_RESERVED, "{")) {
@@ -220,16 +220,16 @@ Node *add() {
     for(;;) {
         if(consume(TK_RESERVED, "+")) {
             Node *rhs;
-            if (node->ty->ty == PTR) {
+            if(node->ty->ty == PTR) {
                 int size = node->ty->ptr_to->size;
                 rhs = new_node(ND_MUL, mul(), new_node_num(size));
             } else {
                 rhs = mul();
             }
             node = new_node(ND_ADD, node, rhs);
-        } else if (consume(TK_RESERVED, "-")) {
+        } else if(consume(TK_RESERVED, "-")) {
             Node *rhs;
-            if (node->ty->ty == PTR) {
+            if(node->ty->ty == PTR) {
                 int size = node->ty->ptr_to->size;
                 rhs = new_node(ND_MUL, mul(), new_node_num(size));
             } else {
@@ -272,7 +272,7 @@ Node *unary() {
     } else if(consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, unary(), NULL);
     } else if(consume(TK_SIZEOF, NULL)) {
-        // ここで unary を作って型をチェック -> int にする
+        return new_node_num(unary()->ty->size);
     } else {
         return primary();
     }
@@ -287,11 +287,11 @@ Node *unary() {
 Node *primary() {
     // 変数宣言
     Token *tok = consume(TK_INT, NULL);
-    if (tok) {
+    if(tok) {
         Type *type = calloc(1, sizeof(Type));
         type->ty = INT;
         type->size = 4;
-        for (;;) {
+        for(;;) {
             if(consume(TK_RESERVED, "*")) {
                 Type *type_ = calloc(1, sizeof(Type));
                 type_->ty = PTR;
@@ -306,7 +306,7 @@ Node *primary() {
         if(!tok) {
             error("変数名ではありません");
         }
-        if (get_elem_from_map(f->lvars, tok->str)) {
+        if(get_elem_from_map(f->lvars, tok->str)) {
             error("変数 %s はすでに宣言されています", tok->str);
         }
         int offset = (f->lvars->len + 1) * 8;
@@ -317,9 +317,9 @@ Node *primary() {
 
     // 変数参照 or 関数呼び出し
     tok = consume(TK_IDENT, NULL);
-    if (tok) {
+    if(tok) {
         // 関数呼び出し
-        if (consume(TK_RESERVED, "(")) {
+        if(consume(TK_RESERVED, "(")) {
             Vector *args = create_vector();
             for(;;) {
                 if(consume(TK_RESERVED, ")")) {
@@ -330,7 +330,7 @@ Node *primary() {
             }
             Func *f_called = get_elem_from_map(funcs, tok->str);
             Type *type;
-            if (!f_called) {
+            if(!f_called) {
                 // いまだけ
                 type = calloc(1, sizeof(Type));
                 type->ty = INT;
@@ -339,10 +339,10 @@ Node *primary() {
                 type = f_called->ret_type;
             }
             return new_node_func_call(tok->str, args, type);
-        // 変数参照
+            // 変数参照
         } else {
             Node *lvar = get_elem_from_map(f->lvars, tok->str);
-            if (!lvar) {
+            if(!lvar) {
                 error("%sは未定義です", tok->str);
             }
             return new_node_lvar(lvar->ty, lvar->offset);
@@ -361,24 +361,25 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     node->kind = kind;
     node->lhs = lhs;
     node->rhs = rhs;
-    switch (kind) {
-        case ND_ADD:
-        case ND_SUB:
-        case ND_MUL:
-        case ND_DIV:
-        case ND_EQ:
-        case ND_NE:
-        case ND_LE:
-        case ND_LT:
-            node->ty = lhs->ty;
-            break;
-        case ND_ADDR:
-            node->ty = calloc(1, sizeof(Type));
-            node->ty->ty = PTR;
-            node->ty->ptr_to = lhs->ty;
-            break;
-        default:
-            break;
+    switch(kind) {
+    case ND_ADD:
+    case ND_SUB:
+    case ND_MUL:
+    case ND_DIV:
+    case ND_EQ:
+    case ND_NE:
+    case ND_LE:
+    case ND_LT:
+        node->ty = lhs->ty;
+        break;
+    case ND_ADDR:
+        node->ty = calloc(1, sizeof(Type));
+        node->ty->ty = PTR;
+        node->ty->size = 8;
+        node->ty->ptr_to = lhs->ty;
+        break;
+    default:
+        break;
     }
 #ifdef DEBUG
     fprintf(stderr, "ND_%d\n", node->kind);

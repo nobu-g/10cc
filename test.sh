@@ -53,3 +53,6 @@ assert 1 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; in
 assert 2 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &c + 2; return *p;}"
 assert 2 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &d + 4; return *p;}"
 assert 4 "int main() {int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return *q;}"
+assert 4 "int main() {return sizeof(4);}"
+assert 8 "int main() {int *a; return sizeof(a);}"
+assert 8 "int main() {int a; a = 42; return sizeof(&a);}"
