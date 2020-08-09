@@ -168,7 +168,7 @@ void gen_func(Func *f) {
     // ローカル変数の領域を確保する
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", f->lvars->len * 8);
+    printf("  sub rsp, %d\n", f->lvars->len * 8);  // FIXME
 
     // 引数の値を stack に push してローカル変数と同じように扱えるように
     for(int i = 0; i < f->args->len; i++) {

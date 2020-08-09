@@ -79,7 +79,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             draw_node_tree(node->rhs, depth + 1, "rhs");
             break;
         case ND_ASSIGN:
-            fprintf(stderr, "ASSIGN\n");
+            fprintf(stderr, "ASSIGN(ty: %d)\n", node->ty->ty);
             draw_node_tree(node->lhs, depth + 1, "lhs");
             draw_node_tree(node->rhs, depth + 1, "rhs");
             break;

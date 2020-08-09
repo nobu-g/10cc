@@ -170,6 +170,9 @@ Node *stmt() {
     return node;
 }
 
+/**
+ * expr = assign
+ */
 Node *expr() { return assign(); }
 
 /**
@@ -223,7 +226,7 @@ Node *add() {
     for(;;) {
         if(consume(TK_RESERVED, "+")) {
             Node *rhs;
-            if(node->ty->ty == PTR) {
+            if(node->ty->ty == PTR || node->ty->ty == ARRAY) {
                 int size = node->ty->ptr_to->size;
                 rhs = new_node(ND_MUL, mul(), new_node_num(size));
             } else {
@@ -232,7 +235,7 @@ Node *add() {
             node = new_node(ND_ADD, node, rhs);
         } else if(consume(TK_RESERVED, "-")) {
             Node *rhs;
-            if(node->ty->ty == PTR) {
+            if(node->ty->ty == PTR || node->ty->ty == ARRAY) {
                 int size = node->ty->ptr_to->size;
                 rhs = new_node(ND_MUL, mul(), new_node_num(size));
             } else {
@@ -275,12 +278,7 @@ Node *unary() {
     } else if(consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, unary(), NULL);
     } else if(consume(TK_SIZEOF, NULL)) {
-        Node *node = unary();
-        if(node->ty->ty == ARRAY) {
-            return new_node_num(node->ty->array_size * node->ty->ptr_to->size);
-        } else {
-            return new_node_num(node->ty->size);
-        }
+        return new_node_num(unary()->ty->size);
     } else {
         return primary();
     }
@@ -322,8 +320,9 @@ Node *primary() {
             type_ = calloc(1, sizeof(Type));
             type_->ty = ARRAY;
             type_->ptr_to = type;
-            type = type_;
             type_->array_size = expect_number();
+            type_->size = type->size * type_->array_size;
+            type = type_;
             expect("]");
         }
         Node *node = new_node_lvar(type, get_offset(type, f->lvars));
@@ -333,9 +332,9 @@ Node *primary() {
 
     // 変数参照 or 関数呼び出し
     tok = consume(TK_IDENT, NULL);
-    if(tok) {
+    if (tok) {
         // 関数呼び出し
-        if(consume(TK_RESERVED, "(")) {
+        if (consume(TK_RESERVED, "(")) {
             Vector *args = create_vector();
             for(;;) {
                 if(consume(TK_RESERVED, ")")) {
@@ -345,16 +344,7 @@ Node *primary() {
                 consume(TK_RESERVED, ",");
             }
             Func *f_called = get_elem_from_map(funcs, tok->str);
-            Type *type;
-            if(!f_called) {
-                // いまだけ
-                type = calloc(1, sizeof(Type));
-                type->ty = INT;
-                type->size = 4;
-            } else {
-                type = f_called->ret_type;
-            }
-            return new_node_func_call(tok->str, args, type);
+            return new_node_func_call(tok->str, args, f_called->ret_type);
             // 変数参照
         } else {
             Node *lvar = get_elem_from_map(f->lvars, tok->str);
@@ -378,14 +368,14 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     node->lhs = lhs;
     node->rhs = rhs;
 
-    if(kind != ND_ADDR) {
-        if (node->lhs && node->lhs->kind == ND_LVAR && node->lhs->ty->ty == ARRAY) {
-            node->lhs = ary_to_ptr(node->lhs);
-        }
-        if (node->rhs && node->rhs->kind == ND_LVAR && node->rhs->ty->ty == ARRAY) {
-            node->rhs = ary_to_ptr(node->rhs);
-        }
+    // if(kind != ND_ADDR) {
+    if (node->lhs && node->lhs->kind == ND_LVAR && node->lhs->ty->ty == ARRAY) {
+        node->lhs = ary_to_ptr(node->lhs);
     }
+    if (node->rhs && node->rhs->kind == ND_LVAR && node->rhs->ty->ty == ARRAY) {
+        node->rhs = ary_to_ptr(node->rhs);
+    }
+    // }
 
     switch(kind) {
     case ND_ADD:
@@ -396,6 +386,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     case ND_NE:
     case ND_LE:
     case ND_LT:
+    case ND_ASSIGN:
         node->ty = lhs->ty;
         break;
     case ND_ADDR:
@@ -410,7 +401,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     default:
         break;
     }
-#ifdef DEBUG
+#if DEBUG <= 1
     fprintf(stderr, "ND_%d\n", node->kind);
 #endif
     return node;
@@ -422,7 +413,7 @@ Node *new_node_func_call(char *name, Vector *args, Type *type) {
     node->name = name;
     node->args = args;
     node->ty = type;
-#ifdef DEBUG
+#if DEBUG <= 1
     fprintf(stderr, "ND_FUNC_CALL\n");
 #endif
     return node;
@@ -433,7 +424,7 @@ Node *new_node_lvar(Type *type, int offset) {
     node->kind = ND_LVAR;
     node->ty = type;
     node->offset = offset;
-#ifdef DEBUG
+#if DEBUG <= 1
     fprintf(stderr, "ND_LVAR\n");
 #endif
     return node;
@@ -448,7 +439,7 @@ Node *new_node_num(int val) {
     type->ty = INT;
     type->size = 4;
     node->ty = type;
-#ifdef DEBUG
+#if DEBUG <= 1
     fprintf(stderr, "ND_NUM\n");
 #endif
     return node;
@@ -456,6 +447,10 @@ Node *new_node_num(int val) {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
+/**
+ * lvars を参照してこれまで確保されたスタック領域の和を計算し，
+ * type 型の新たな変数を格納できるだけの offset を返す
+ */
 int get_offset(Type *type, Map *lvars) {
     int offset = 0;
     for (int i = 0; i < lvars->len; i++) {
@@ -467,20 +462,31 @@ int get_offset(Type *type, Map *lvars) {
         }
     }
     if (type->ty == ARRAY) {
-        offset += type->array_size * 8;
+        offset += 8;
     } else {
         offset += 8;
     }
     return offset;
 }
 
-Node *ary_to_ptr(Node *node) {
-    if (node->ty->ty != ARRAY) {
+Node *ary_to_ptr(Node *base) {
+    if (base->ty->ty != ARRAY) {
         error("配列ではありません");
     }
     Type *ty = calloc(1, sizeof(Type));
     ty->ty = PTR;
     ty->size = 8;
-    ty->ptr_to = node->ty->ptr_to;
-    return new_node_lvar(ty, node->offset);  // ここがまずい。array の offset は先頭要素にすべき？
+    ty->ptr_to = base->ty->ptr_to;
+    Node *ptr = new_node_lvar(ty, get_offset(ty, f->lvars));
+
+    Node *addr = calloc(1, sizeof(Node));
+    addr->kind = ND_ADDR;
+    addr->lhs = base;
+    addr->rhs = NULL;
+    addr->ty = calloc(1, sizeof(Type));
+    addr->ty->ty = PTR;
+    addr->ty->size = 8;
+    addr->ty->ptr_to = base->ty->ptr_to;
+
+    return new_node(ND_ASSIGN, ptr, addr);
 }

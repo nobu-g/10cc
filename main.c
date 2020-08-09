@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
     user_input = argv[1];
     tokenize();
     program();
-#ifdef DEBUG
+#if DEBUG <= 2
     draw_ast();
 #endif
     gen_x86();

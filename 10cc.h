@@ -5,7 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-// #define DEBUG
+// 0: TRACE
+// 1: DEBUG
+// 2: INFO
+// 3: WARNING
+// 4: ERROR
+// 5: CRITICAL
+// 6: NONE
+#define DEBUG 6
 
 typedef struct LVar LVar;
 typedef struct Func Func;
