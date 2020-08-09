@@ -12,7 +12,7 @@
 // 4: ERROR
 // 5: CRITICAL
 // 6: NONE
-#define DEBUG 2
+#define DEBUG 1
 
 typedef struct LVar LVar;
 typedef struct Func Func;
@@ -45,7 +45,7 @@ typedef enum {
     TK_ELSE,     // else
     TK_WHILE,    // while
     TK_FOR,      // for
-    TK_EOF,      // 入力の終わりを表すトークン
+    TK_EOF,      // ファイルの終わりを表すトークン
     TK_INT,      // int
     TK_SIZEOF,   // sizeof
 } TokenKind;
@@ -95,6 +95,7 @@ typedef enum {
     ND_BLOCK,     // block
     ND_FUNC_CALL, // function call
     ND_LVAR,      // local variable
+    ND_GVAR,      // global variable
     ND_NUM,       // number
     ND_ADDR,      // unary &
     ND_DEREF,     // unary *
@@ -122,13 +123,13 @@ struct Node {
     Vector *stmts; // Vector<Node *>
 
     // used for function
-    char *name;
     Vector *args; // Vector<Node *>
     Node *impl;
 
-    int val;    // used only if kind=ND_NUM
-    Type *ty;   // used only if kind=ND_NUM or kind=ND_LVAR
-    int offset; // used only if kind=ND_LVAR
+    char *name;  // used only if kind in (ND_FUNC, ND_GVAR)
+    int val;     // used only if kind=ND_NUM
+    Type *ty;    // used only if kind in (ND_NUM, ND_LVAR, ND_GVAR)
+    int offset;  // used only if kind=ND_LVAR
 };
 
 extern char *user_input;

@@ -32,7 +32,17 @@ void gen(Node *node) {
         printf("  call %s\n", node->name);
         printf("  push rax\n");
         return;
-    case ND_LVAR: // node にアクセスして中身をスタックに push
+    case ND_GVAR:
+        for(int i = 0; i < node->args->len; i++) {
+            gen(node->args->data[i]);
+        }
+        for(int i = node->args->len - 1; 0 <= i; i--) {
+            printf("  pop %s\n", argregs[i]);
+        }
+        printf("  call %s\n", node->name);
+        printf("  push rax\n");
+        return;
+  case ND_LVAR: // node にアクセスして中身をスタックに push
         gen_lval(node);
         printf("  pop rax\n"); // local variable のアドレスをraxにpop
         printf(
