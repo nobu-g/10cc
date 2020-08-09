@@ -346,6 +346,12 @@ Node *primary() {
             Func *f_called = get_elem_from_map(funcs, tok->str);
             return new_node_func_call(tok->str, args, f_called->ret_type);
             // 変数参照
+        } else if(consume(TK_RESERVED, "[")) {
+            Node *lhs = get_elem_from_map(f->lvars, tok->str);
+            Node *rhs = new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
+            expect("]");
+            Node *sum = new_node(ND_ADD, lhs, rhs);
+            return new_node(ND_DEREF, sum, NULL);
         } else {
             Node *lvar = get_elem_from_map(f->lvars, tok->str);
             if(!lvar) {
@@ -359,7 +365,31 @@ Node *primary() {
         expect(")");
         return node;
     }
-    return new_node_num(expect_number());
+
+    // 2[4] -> *(2 + 4) -> error!!!!
+    Node *node = new_node_num(expect_number());
+    if (consume(TK_RESERVED, "[")) {
+        tok = consume(TK_IDENT, NULL);
+        Node *lhs, *rhs;
+        if (tok) {
+            lhs = get_elem_from_map(f->lvars, tok->str);
+            if(!lhs) {
+                error("%sは未定義です", tok->str);
+            }
+            if (lhs->ty->ty == ARRAY || lhs->ty->ty == PTR) {
+                rhs = new_node(ND_MUL, node, new_node_num(lhs->ty->ptr_to->size));
+            } else {
+                rhs = node;  // deref で死ぬ†運命[さだめ]†
+            }
+        } else {
+            lhs = new_node_num(expect_number());
+            rhs = node;  // deref で死ぬ†運命[さだめ]†
+        }
+        expect("]");
+        Node *sum = new_node(ND_ADD, lhs, rhs);
+        return new_node(ND_DEREF, sum, NULL);
+    }
+    return node;
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -368,14 +398,12 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     node->lhs = lhs;
     node->rhs = rhs;
 
-    // if(kind != ND_ADDR) {
-    if (node->lhs && node->lhs->kind == ND_LVAR && node->lhs->ty->ty == ARRAY) {
+    if(node->lhs && node->lhs->kind == ND_LVAR && node->lhs->ty->ty == ARRAY) {
         node->lhs = ary_to_ptr(node->lhs);
     }
-    if (node->rhs && node->rhs->kind == ND_LVAR && node->rhs->ty->ty == ARRAY) {
+    if(node->rhs && node->rhs->kind == ND_LVAR && node->rhs->ty->ty == ARRAY) {
         node->rhs = ary_to_ptr(node->rhs);
     }
-    // }
 
     switch(kind) {
     case ND_ADD:
@@ -453,15 +481,15 @@ bool at_eof() { return token->kind == TK_EOF; }
  */
 int get_offset(Type *type, Map *lvars) {
     int offset = 0;
-    for (int i = 0; i < lvars->len; i++) {
+    for(int i = 0; i < lvars->len; i++) {
         Node *node = lvars->vals->data[i];
-        if (node->ty->ty == ARRAY) {
+        if(node->ty->ty == ARRAY) {
             offset += node->ty->array_size * 8;
         } else {
             offset += 8;
         }
     }
-    if (type->ty == ARRAY) {
+    if(type->ty == ARRAY) {
         offset += 8;
     } else {
         offset += 8;
@@ -470,7 +498,7 @@ int get_offset(Type *type, Map *lvars) {
 }
 
 Node *ary_to_ptr(Node *base) {
-    if (base->ty->ty != ARRAY) {
+    if(base->ty->ty != ARRAY) {
         error("配列ではありません");
     }
     Type *ty = calloc(1, sizeof(Type));
