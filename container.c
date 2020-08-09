@@ -27,7 +27,7 @@ Map *create_map() {
 }
 
 void add_elem_to_map(Map *map, char *key, void *val) {
-    for (int i=0; i<map->len; i++) {
+    for (int i = 0; i < map->len; i++) {
         if (strcmp(map->keys->data[i], key) == 0) {
             map->vals->data[i] = val;
             return;
@@ -39,7 +39,7 @@ void add_elem_to_map(Map *map, char *key, void *val) {
 }
 
 void *get_elem_from_map(Map *map, char *key) {
-    for (int i=0; i<map->len; i++) {
+    for (int i = 0; i < map->len; i++) {
         if ((strcmp(map->keys->data[i], key) == 0)) {
             return map->vals->data[i];
         }

@@ -12,7 +12,7 @@
 // 4: ERROR
 // 5: CRITICAL
 // 6: NONE
-#define DEBUG 6
+#define DEBUG 2
 
 typedef struct LVar LVar;
 typedef struct Func Func;

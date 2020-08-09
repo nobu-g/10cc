@@ -3,7 +3,6 @@
 char *user_input;
 Token *token;
 
-
 Token *consume(TokenKind kind, char *str) {
     if (token->kind != kind) {
         return NULL;
@@ -21,14 +20,14 @@ Token *consume(TokenKind kind, char *str) {
 }
 
 void expect(char *str) {
-    if(token->kind != TK_RESERVED || strcmp(token->str, str) != 0) {
+    if (token->kind != TK_RESERVED || strcmp(token->str, str) != 0) {
         error_at(token->loc, "'%s'ではありません", str);
     }
     token = token->next;
 }
 
 int expect_number() {
-    if(token->kind != TK_NUM) {
+    if (token->kind != TK_NUM) {
         error_at(token->loc, "数ではありません");
     }
     int val = token->val;
@@ -56,57 +55,57 @@ void tokenize() {
     Token *cur = &head;
     char *p = user_input;
 
-    while(*p) {
-        if(isspace(*p)) {
+    while (*p) {
+        if (isspace(*p)) {
             p++;
             continue;
         }
 
-        if(strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
             cur = new_token(TK_RETURN, cur, p, 6);
             p += 6;
             continue;
         }
 
-        if(strncmp(p, "if", 2) == 0 && !is_alnum(p[2])) {
+        if (strncmp(p, "if", 2) == 0 && !is_alnum(p[2])) {
             cur = new_token(TK_IF, cur, p, 2);
             p += 2;
             continue;
         }
 
-        if(strncmp(p, "else", 4) == 0 && !is_alnum(p[4])) {
+        if (strncmp(p, "else", 4) == 0 && !is_alnum(p[4])) {
             cur = new_token(TK_ELSE, cur, p, 4);
             p += 4;
             continue;
         }
 
-        if(strncmp(p, "while", 5) == 0 && !is_alnum(p[5])) {
+        if (strncmp(p, "while", 5) == 0 && !is_alnum(p[5])) {
             cur = new_token(TK_WHILE, cur, p, 5);
             p += 5;
             continue;
         }
 
-        if(strncmp(p, "for", 3) == 0 && !is_alnum(p[3])) {
+        if (strncmp(p, "for", 3) == 0 && !is_alnum(p[3])) {
             cur = new_token(TK_FOR, cur, p, 3);
             p += 3;
             continue;
         }
 
-        if(strncmp(p, "int", 3) == 0 && !is_alnum(p[3])) {
+        if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3])) {
             cur = new_token(TK_INT, cur, p, 3);
             p += 3;
             continue;
         }
 
-        if(strncmp(p, "sizeof", 6) == 0 && !is_alnum(p[6])) {
+        if (strncmp(p, "sizeof", 6) == 0 && !is_alnum(p[6])) {
             cur = new_token(TK_SIZEOF, cur, p, 6);
             p += 6;
             continue;
         }
 
-        if(isalpha(*p) || *p == '_') {
+        if (isalpha(*p) || *p == '_') {
             int len = 1;
-            while(is_alnum(p[len])) {
+            while (is_alnum(p[len])) {
                 len++;
             }
             cur = new_token(TK_IDENT, cur, p, len);
@@ -114,20 +113,20 @@ void tokenize() {
             continue;
         }
 
-        if(startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") ||
-           startswith(p, ">=")) {
+        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") ||
+            startswith(p, ">=")) {
             cur = new_token(TK_RESERVED, cur, p, 2);
             p += 2;
             continue;
         }
 
-        if(strchr("+-*/()<>=;{},&[]", *p)) {
+        if (strchr("+-*/()<>=;{},&[]", *p)) {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
             continue;
         }
 
-        if(isdigit(*p)) {
+        if (isdigit(*p)) {
             char *tmp = p;
             int val = strtol(p, &p, 10);
             cur = new_token(TK_NUM, cur, p, p - tmp);

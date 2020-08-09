@@ -29,15 +29,15 @@ bool is_alnum(char c) {
 }
 
 void draw_node_tree(Node *node, int depth, char *prefix) {
-    if(node != NULL) {
-        for(int i = 0; i < depth; i++) {
+    if (node != NULL) {
+        for (int i = 0; i < depth; i++) {
             fprintf(stderr, "  ");
         }
-        if(strlen(prefix)) {
+        if (strlen(prefix)) {
             fprintf(stderr, "%s: ", prefix);
         }
 
-        switch(node->kind) {
+        switch (node->kind) {
         case ND_ADD:
             fprintf(stderr, "ADD\n");
             draw_node_tree(node->lhs, depth + 1, "lhs");
@@ -107,20 +107,21 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             break;
         case ND_BLOCK:
             fprintf(stderr, "BLOCK\n");
-            for(int i = 0; i < node->stmts->len; i++) {
+            for (int i = 0; i < node->stmts->len; i++) {
                 draw_node_tree(node->stmts->data[i], depth + 1, "");
             }
             break;
         case ND_FUNC_CALL:
             fprintf(stderr, "FUNC_CALL(%s)\n", node->name);
-            for(int i = 0; i < node->args->len; i++) {
+            for (int i = 0; i < node->args->len; i++) {
                 char prefix[16] = {'\0'};
                 sprintf(prefix, "arg%d", i);
                 draw_node_tree(node->args->data[i], depth + 1, prefix);
             }
             break;
         case ND_LVAR:
-            fprintf(stderr, "LVAR(ty: %d, offset: %d)\n", node->ty->ty, node->offset);
+            fprintf(stderr, "LVAR(ty: %d, offset: %d)\n", node->ty->ty,
+                    node->offset);
             break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);
@@ -140,7 +141,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
 }
 
 void draw_ast() {
-    for(int i = 0; i < code->len; i++) {
+    for (int i = 0; i < code->len; i++) {
         Func *f = code->data[i];
         fprintf(stderr, "%s(\n", f->name);
         for (int j = 0; j < f->args->len; j++) {
@@ -149,7 +150,7 @@ void draw_ast() {
             draw_node_tree(f->args->data[j], 1, prefix);
         }
         fprintf(stderr, ")\n");
-        for(int j = 0; j < f->body->len; j++) {
+        for (int j = 0; j < f->body->len; j++) {
             draw_node_tree(f->body->data[j], 1, "");
         }
         fprintf(stderr, "\n");
