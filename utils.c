@@ -123,6 +123,10 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             fprintf(stderr, "LVAR(ty: %d, offset: %d)\n", node->ty->ty,
                     node->offset);
             break;
+        case ND_GVAR:
+            fprintf(stderr, "GVAR(ty: %d, offset: %d)\n", node->ty->ty,
+                    node->offset);
+            break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);
             break;
@@ -141,8 +145,8 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
 }
 
 void draw_ast() {
-    for (int i = 0; i < code->len; i++) {
-        Func *f = code->data[i];
+    for (int i = 0; i < funcs->len; i++) {
+        Func *f = funcs->vals->data[i];
         fprintf(stderr, "%s(\n", f->name);
         for (int j = 0; j < f->args->len; j++) {
             char prefix[256] = {'\0'};

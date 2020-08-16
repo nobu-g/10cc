@@ -1,16 +1,14 @@
 #include "10cc.h"
 
 Func *f;
-Vector *code;  // Vector[Func]
 Map *funcs;  // Map[char *, Func]
-Map *gvars;  // Vector[char *, Node]
+Map *gvars;  // Map[char *, Node]
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(Type *type, int offset);
 Node *new_node_gvar(Type *type, char *name);
 Node *new_node_func_call(char *name, Vector *args, Type *type);
-// Func *func_or_gvar();
 void error_at(char *loc, char *fmt, ...);
 
 bool at_eof();
@@ -18,10 +16,9 @@ int get_offset(Type *type, Map *lvars);
 Node *ary_to_ptr(Node *node);
 
 /**
- * program = func*
+ * program = (func|gvar)*
  */
 void program() {
-    code = create_vector();
     funcs = create_map();
     gvars = create_map();
     while (!at_eof()) {
@@ -51,7 +48,7 @@ void program() {
 
         if (consume(TK_RESERVED, "(")) {
             // 関数
-            push(code, func(tok->str, type));
+            func(tok->str, type);
         } else {
             // グローバル変数
             if (get_elem_from_map(gvars, tok->str)) {
@@ -60,12 +57,11 @@ void program() {
             Node *node = new_node_gvar(type, tok->str);
             add_elem_to_map(gvars, tok->str, node);
             expect(";");
-            push(code, node);
         }
     }
 }
 
-Func *func(char *name, Type *ret_type) {
+void func(char *name, Type *ret_type) {
     /**
      * "int f(int a, int b) {}" の "(" まで読み終えた
      */
@@ -113,10 +109,9 @@ Func *func(char *name, Type *ret_type) {
     add_elem_to_map(funcs, f->name, f);
     expect("{");
     f->body = create_vector();
-    while(!consume(TK_RESERVED, "}")) {
+    while (!consume(TK_RESERVED, "}")) {
         push(f->body, stmt());
     }
-    return f;
 }
 
 /**

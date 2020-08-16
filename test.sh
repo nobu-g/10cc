@@ -68,4 +68,7 @@ assert 2 "int main() {int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(p 
 assert 2 "int main() {int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1);}"
 assert 3 "int main() {int a[2]; *a = 1; *(a + 1) = 2; return a[0] + a[1];}"
 assert 3 "int main() {int a[2]; *a = 1; *(a + 1) = 2; return 0[a] + 1[a];}"
+assert 34 "int g; int main() { g = 34; return g;}"
+assert 34 "int *g; int main() { int G; G = 34; g = &G; return *g;}"
+# assert 2 "int g[3]; int main() {g[1] = 2; return g[1];}"
 # assert 34 "int g; int main() { g = 34; return g;}"

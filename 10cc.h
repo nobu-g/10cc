@@ -12,7 +12,7 @@
 // 4: ERROR
 // 5: CRITICAL
 // 6: NONE
-#define DEBUG 1
+#define DEBUG 2
 
 typedef struct LVar LVar;
 typedef struct Func Func;
@@ -133,7 +133,8 @@ struct Node {
 };
 
 extern char *user_input;
-extern Vector *code;
+extern Map *funcs;
+extern Map *gvars;
 extern Token *token;
 
 void tokenize();
@@ -143,7 +144,7 @@ void expect(char *op);
 int expect_number();
 
 void program();
-Func *func();
+void func();
 Node *stmt();
 Node *expr();
 Node *assign();

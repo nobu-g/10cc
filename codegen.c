@@ -33,31 +33,36 @@ void gen(Node *node) {
         printf("  push rax\n");
         return;
     case ND_GVAR:
-        for(int i = 0; i < node->args->len; i++) {
-            gen(node->args->data[i]);
-        }
-        for(int i = node->args->len - 1; 0 <= i; i--) {
-            printf("  pop %s\n", argregs[i]);
-        }
-        printf("  call %s\n", node->name);
-        printf("  push rax\n");
+        printf("  pop rax\n"); // local variable のアドレスをraxにpop
+        printf("  mov rax, QWORD PTR %s[rip]\n", node->name); // raxの指す先にアクセスして中身をraxにコピー
+        printf("  push rax\n"); // コピーしてきた値をスタックにpush
         return;
-  case ND_LVAR: // node にアクセスして中身をスタックに push
+    case ND_LVAR: // node にアクセスして中身をスタックに push
         gen_lval(node);
         printf("  pop rax\n"); // local variable のアドレスをraxにpop
-        printf(
-            "  mov rax, [rax]\n"); // raxの指す先にアクセスして中身をraxにコピー
+        printf("  mov rax, [rax]\n"); // raxの指す先にアクセスして中身をraxにコピー
         printf("  push rax\n"); // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
+        // グローバル変数だけ別扱い
+        if (node->lhs->kind == ND_GVAR) {
+            gen(node->rhs);
+            printf("  pop rdi\n");        // 右辺値
+            printf("  mov QWORD PTR %s[rip], rdi\n", node->lhs->name); // rdiの値をraxが指すメモリにコピー
+            printf("  push rdi\n");       // 代入演算の結果を書き戻す
+            return;
+        }
+
         if (node->lhs->kind == ND_DEREF) {
             gen(node->lhs->lhs); // node->lhs->lhs: ポインタ型 local variable
-        } else {
+        } else if (node->lhs->kind == ND_LVAR) {
             gen_lval(node->lhs);
+        } else {
+            error("有効な左辺値ではありません．");
         }
         gen(node->rhs);
         printf("  pop rdi\n");        // 右辺値
-        printf("  pop rax\n");        // 左辺値
+        printf("  pop rax\n");        // 左辺値(アドレス)
         printf("  mov [rax], rdi\n"); // rdiの値をraxが指すメモリにコピー
         printf("  push rdi\n");       // 代入演算の結果を書き戻す
         return;
@@ -171,6 +176,11 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
+void gen_gvar(Node *g) {
+    printf("%s:\n", g->name);
+    printf("  .zero %d\n", g->ty->size);
+}
+
 void gen_func(Func *f) {
     printf(".global %s\n", f->name);
     printf("\n%s:\n", f->name);
@@ -198,7 +208,14 @@ void gen_func(Func *f) {
 
 void gen_x86() {
     printf(".intel_syntax noprefix\n");
-    for (int i = 0; i < code->len; i++) {
-        gen_func(code->data[i]);
+
+    printf(".data\n");
+    for (int i = 0; i < gvars->len; i++) {
+        gen_gvar(gvars->vals->data[i]);
+    }
+    printf("\n");
+    printf(".text\n");
+    for (int i = 0; i < funcs->len; i++) {
+        gen_func(funcs->vals->data[i]);
     }
 }
