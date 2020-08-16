@@ -1,8 +1,8 @@
 #include "10cc.h"
 
 Func *f;
-Map *funcs;  // Map[char *, Func]
-Map *gvars;  // Map[char *, Node]
+Map *funcs; // Map[char *, Func]
+Map *gvars; // Map[char *, Node]
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
@@ -14,6 +14,11 @@ void error_at(char *loc, char *fmt, ...);
 bool at_eof();
 int get_offset(Type *type, Map *lvars);
 Node *ary_to_ptr(Node *node);
+
+Type *new_ty(int ty, int size);
+Type *int_ty();
+Type *ptr_to(Type *base);
+Type *ary_of(Type *base, int size);
 
 /**
  * program = (func|gvar)*
@@ -27,19 +32,9 @@ void program() {
             fprintf(stderr, "tok: %s", token->str);
             error("有効な型ではありません");
         }
-        Type *type = calloc(1, sizeof(Type));
-        type->ty = INT;
-        type->size = 4;
-        for (;;) {
-            if (consume(TK_RESERVED, "*")) {
-                Type *type_ = calloc(1, sizeof(Type));
-                type_->ty = PTR;
-                type_->size = 8;
-                type_->ptr_to = type;
-                type = type_;
-            } else {
-                break;
-            }
+        Type *type = int_ty();
+        while (consume(TK_RESERVED, "*")) {
+            type = ptr_to(type);
         }
         tok = consume(TK_IDENT, NULL);
         if (!tok) {
@@ -73,19 +68,9 @@ void func(char *name, Type *ret_type) {
     for (;;) {
         Token *tok = consume(TK_INT, NULL);
         if (tok) {
-            Type *arg_type = calloc(1, sizeof(Type));
-            arg_type->ty = INT;
-            arg_type->size = 4;
-            for (;;) {
-                if(consume(TK_RESERVED, "*")) {
-                    Type *type_ = calloc(1, sizeof(Type));
-                    type_->ty = PTR;
-                    type_->size = 8;
-                    type_->ptr_to = arg_type;
-                    arg_type = type_;
-                } else {
-                    break;
-                }
+            Type *arg_type = int_ty();
+            while (consume(TK_RESERVED, "*")) {
+                arg_type = ptr_to(arg_type);
             }
             tok = consume(TK_IDENT, NULL);
             if (!tok) {
@@ -94,8 +79,7 @@ void func(char *name, Type *ret_type) {
             if (get_elem_from_map(f->lvars, tok->str)) {
                 error("変数 %s はすでに宣言されています", tok->str);
             }
-            int offset = (f->lvars->len + 1) * 8;
-            Node *node = new_node_lvar(arg_type, offset);
+            Node *node = new_node_lvar(arg_type, get_offset(arg_type, f->lvars));
             push(f->args, node);
             add_elem_to_map(f->lvars, tok->str, node);
             if (!consume(TK_RESERVED, ",")) {
@@ -306,20 +290,9 @@ Node *primary() {
     // 変数宣言
     Token *tok = consume(TK_INT, NULL);
     if (tok) {
-        Type *type = calloc(1, sizeof(Type));
-        type->ty = INT;
-        type->size = 4;
-        Type *type_;
-        for (;;) {
-            if (consume(TK_RESERVED, "*")) {
-                type_ = calloc(1, sizeof(Type));
-                type_->ty = PTR;
-                type_->size = 8;
-                type_->ptr_to = type;
-                type = type_;
-            } else {
-                break;
-            }
+        Type *type = int_ty();
+        while (consume(TK_RESERVED, "*")) {
+            type = ptr_to(type);
         }
         tok = consume(TK_IDENT, NULL);
         if (!tok) {
@@ -329,12 +302,7 @@ Node *primary() {
             error("変数 %s はすでに宣言されています", tok->str);
         }
         if (consume(TK_RESERVED, "[")) {
-            type_ = calloc(1, sizeof(Type));
-            type_->ty = ARRAY;
-            type_->ptr_to = type;
-            type_->array_size = expect_number();
-            type_->size = type->size * type_->array_size;
-            type = type_;
+            type = ary_of(type, expect_number());
             expect("]");
         }
         Node *node = new_node_lvar(type, get_offset(type, f->lvars));
@@ -357,11 +325,10 @@ Node *primary() {
             }
             Func *f_called = get_elem_from_map(funcs, tok->str);
             return new_node_func_call(tok->str, args, f_called->ret_type);
-        // 変数参照
+            // 変数参照
         } else if (consume(TK_RESERVED, "[")) {
             Node *lhs = get_elem_from_map(f->lvars, tok->str);
-            Node *rhs =
-                new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
+            Node *rhs = new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
             expect("]");
             Node *sum = new_node(ND_ADD, lhs, rhs);
             return new_node(ND_DEREF, sum, NULL);
@@ -393,8 +360,7 @@ Node *primary() {
                 error("%sは未定義です", tok->str);
             }
             if (lhs->ty->ty == ARRAY || lhs->ty->ty == PTR) {
-                rhs =
-                    new_node(ND_MUL, node, new_node_num(lhs->ty->ptr_to->size));
+                rhs = new_node(ND_MUL, node, new_node_num(lhs->ty->ptr_to->size));
             } else {
                 rhs = node; // deref で死ぬ†運命[さだめ]†
             }
@@ -435,10 +401,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
         node->ty = lhs->ty;
         break;
     case ND_ADDR:
-        node->ty = calloc(1, sizeof(Type));
-        node->ty->ty = PTR;
-        node->ty->size = 8;
-        node->ty->ptr_to = lhs->ty;
+        node->ty = ptr_to(lhs->ty);
         break;
     case ND_DEREF:
         node->ty = node->lhs->ty->ptr_to;
@@ -490,11 +453,7 @@ Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
-
-    Type *type = calloc(1, sizeof(Type));
-    type->ty = INT;
-    type->size = 4;
-    node->ty = type;
+    node->ty = new_ty(INT, 4);
 #if DEBUG <= 1
     fprintf(stderr, "ND_NUM\n");
 #endif
@@ -529,20 +488,36 @@ Node *ary_to_ptr(Node *base) {
     if (base->ty->ty != ARRAY) {
         error("配列ではありません");
     }
-    Type *ty = calloc(1, sizeof(Type));
-    ty->ty = PTR;
-    ty->size = 8;
-    ty->ptr_to = base->ty->ptr_to;
+    Type *ty = ptr_to(base->ty->ptr_to);
     Node *ptr = new_node_lvar(ty, get_offset(ty, f->lvars));
 
     Node *addr = calloc(1, sizeof(Node));
     addr->kind = ND_ADDR;
     addr->lhs = base;
     addr->rhs = NULL;
-    addr->ty = calloc(1, sizeof(Type));
-    addr->ty->ty = PTR;
-    addr->ty->size = 8;
-    addr->ty->ptr_to = base->ty->ptr_to;
+    addr->ty = ty;
 
     return new_node(ND_ASSIGN, ptr, addr);
+}
+
+Type *new_ty(int ty, int size) {
+    Type *ret = calloc(1, sizeof(Type));
+    ret->ty = ty;
+    ret->size = size;
+    return ret;
+}
+
+Type *int_ty() { return new_ty(INT, 4); }
+
+Type *ptr_to(Type *base) {
+    Type *ty = new_ty(PTR, 8);
+    ty->ptr_to = base;
+    return ty;
+}
+
+Type *ary_of(Type *base, int size) {
+    Type *ty = new_ty(ARRAY, base->size * size);
+    ty->ptr_to = base;
+    ty->array_size = size;
+    return ty;
 }
