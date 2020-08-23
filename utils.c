@@ -24,8 +24,7 @@ void error_at(char *loc, char *fmt, ...) {
 bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 bool is_alnum(char c) {
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-           ('0' <= c && c <= '9') || (c == '_');
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
 }
 
 void draw_node_tree(Node *node, int depth, char *prefix) {
@@ -120,12 +119,10 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             }
             break;
         case ND_LVAR:
-            fprintf(stderr, "LVAR(ty: %d, offset: %d)\n", node->ty->ty,
-                    node->offset);
+            fprintf(stderr, "LVAR(ty: %d, offset: %d)\n", node->ty->ty, node->offset);
             break;
         case ND_GVAR:
-            fprintf(stderr, "GVAR(ty: %d, offset: %d)\n", node->ty->ty,
-                    node->offset);
+            fprintf(stderr, "GVAR(ty: %d, name: %s)\n", node->ty->ty, node->name);
             break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);

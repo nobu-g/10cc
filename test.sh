@@ -6,10 +6,10 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./10cc "$input" > tmp.s
+  ./10cc "$input" >tmp.s
   cc -c tmp.s    # -> tmp.o
   cc -c helper.c # -> helper.o
-  cc -o tmp tmp.o helper.o
+  cc -static -o tmp tmp.o helper.o
   # cc -o tmp tmp.s
   ./tmp
   actual="$?"
@@ -46,6 +46,7 @@ assert 2 "int bar(int m) {return m+1;} int foo(int n) {return bar(n+1);} int mai
 assert 24 "int fact(int n) {if (n < 2) return 1; else return n * fact(n-1);} int main() {return fact(4);}"
 assert 13 "int fibo(int n) {if (n < 2) return 1; else return fibo(n-2) + fibo(n-1);} int main() {return fibo(6);}"
 assert 3 "int main() {int x; int *y; x = 3; y = &x; return *y;}"
+assert 1 "int main() {int x; int *y; x = 3; y = &x; return 1;}"
 assert 42 "int ***ptr() {int foo; int *var; return 42;} int main() {int *****a; return ptr();}"
 assert 1 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &b; int *q; q = p + 2; return *q;}"
 assert 2 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &c; int *q; q = p + 2; return *q;}"
@@ -70,5 +71,4 @@ assert 3 "int main() {int a[2]; *a = 1; *(a + 1) = 2; return a[0] + a[1];}"
 assert 3 "int main() {int a[2]; *a = 1; *(a + 1) = 2; return 0[a] + 1[a];}"
 assert 34 "int g; int main() { g = 34; return g;}"
 assert 34 "int *g; int main() { int G; G = 34; g = &G; return *g;}"
-# assert 2 "int g[3]; int main() {g[1] = 2; return g[1];}"
-# assert 34 "int g; int main() { g = 34; return g;}"
+assert 2 "int g[3]; int main() {g[1] = 2; return g[1];}"

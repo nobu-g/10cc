@@ -8,11 +8,19 @@ int label_cnt = 0;
 // node が指す local variable の "スタック上のアドレス" をスタックに push する
 void gen_lval(Node *node) {
     if (node->kind != ND_LVAR) {
-        error("代入の左辺値が変数ではありません: %d", node->kind);
+        error("ローカル変数ではありません: %d", node->kind);
     }
-    printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
-    printf("  sub rax, %d\n", node->offset); // raxをoffsetだけ移動
-    printf("  push rax\n"); // local variable のアドレスをスタックにpush
+    printf("  lea rax, [rbp-%d]\n", node->offset);
+    printf("  push rax\n");  // local variable のアドレスをスタックにpush
+}
+
+// node が指す global variable の "メモリ上のアドレス" をスタックに push する
+void gen_gval(Node *node) {
+    if (node->kind != ND_GVAR) {
+        error("グローバル変数ではありません: %d", node->kind);
+    }
+    printf("  lea rax, %s\n", node->name);
+    printf("  push rax\n");  // global variable のアドレスをスタックにpush
 }
 
 // スタックから入力を受け取り、nodeが表す演算の結果をスタックに戻す処理を生成する
@@ -33,8 +41,9 @@ void gen(Node *node) {
         printf("  push rax\n");
         return;
     case ND_GVAR:
+        gen_gval(node);
         printf("  pop rax\n"); // local variable のアドレスをraxにpop
-        printf("  mov rax, QWORD PTR %s[rip]\n", node->name); // raxの指す先にアクセスして中身をraxにコピー
+        printf("  mov rax, [rax]\n"); // raxの指す先にアクセスして中身をraxにコピー
         printf("  push rax\n"); // コピーしてきた値をスタックにpush
         return;
     case ND_LVAR: // node にアクセスして中身をスタックに push
@@ -44,19 +53,12 @@ void gen(Node *node) {
         printf("  push rax\n"); // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
-        // グローバル変数だけ別扱い
-        if (node->lhs->kind == ND_GVAR) {
-            gen(node->rhs);
-            printf("  pop rdi\n");        // 右辺値
-            printf("  mov QWORD PTR %s[rip], rdi\n", node->lhs->name); // rdiの値をraxが指すメモリにコピー
-            printf("  push rdi\n");       // 代入演算の結果を書き戻す
-            return;
-        }
-
         if (node->lhs->kind == ND_DEREF) {
             gen(node->lhs->lhs); // node->lhs->lhs: ポインタ型 local variable
         } else if (node->lhs->kind == ND_LVAR) {
             gen_lval(node->lhs);
+        } else if (node->lhs->kind == ND_GVAR) {
+            gen_gval(node->lhs);
         } else {
             error("有効な左辺値ではありません．");
         }
@@ -121,7 +123,13 @@ void gen(Node *node) {
         }
         return;
     case ND_ADDR:
-        gen_lval(node->lhs);
+        if (node->lhs->kind == ND_LVAR) {
+            gen_lval(node->lhs);
+        } else if (node->lhs->kind == ND_GVAR) {
+            gen_gval(node->lhs);
+        } else {
+            error("アドレスを参照できません");
+        }
         return;
     case ND_DEREF:      // 右辺値参照
         gen(node->lhs); // アドレスがスタックに積まれる
@@ -196,8 +204,7 @@ void gen_func(Func *f) {
         printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
         Node *arg = f->args->data[i];
         printf("  sub rax, %d\n", arg->offset); // raxをoffsetだけ移動
-        printf("  mov [rax], %s\n",
-               argregs[i]); // 第 i 引数の値をraxが指すメモリにコピー
+        printf("  mov [rax], %s\n", argregs[i]); // 第 i 引数の値をraxが指すメモリにコピー
     }
 
     // 中身のコードを吐く

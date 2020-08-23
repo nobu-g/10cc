@@ -49,6 +49,12 @@ void program() {
             if (get_elem_from_map(gvars, tok->str)) {
                 error("グローバル変数 %s はすでに宣言されています", tok->str);
             }
+
+            if (consume(TK_RESERVED, "[")) {
+                type = ary_of(type, expect_number());
+                expect("]");
+            }
+
             Node *node = new_node_gvar(type, tok->str);
             add_elem_to_map(gvars, tok->str, node);
             expect(";");
@@ -328,6 +334,12 @@ Node *primary() {
             // 変数参照
         } else if (consume(TK_RESERVED, "[")) {
             Node *lhs = get_elem_from_map(f->lvars, tok->str);
+            if (!lhs) {
+                lhs = get_elem_from_map(gvars, tok->str);
+                if (!lhs) {
+                    error("%sは未定義です", tok->str);
+                }
+            }
             Node *rhs = new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
             expect("]");
             Node *sum = new_node(ND_ADD, lhs, rhs);
@@ -381,10 +393,10 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     node->lhs = lhs;
     node->rhs = rhs;
 
-    if (node->lhs && node->lhs->kind == ND_LVAR && node->lhs->ty->ty == ARRAY) {
+    if (node->lhs && (node->lhs->kind == ND_LVAR || node->lhs->kind == ND_GVAR) && node->lhs->ty->ty == ARRAY) {
         node->lhs = ary_to_ptr(node->lhs);
     }
-    if (node->rhs && node->rhs->kind == ND_LVAR && node->rhs->ty->ty == ARRAY) {
+    if (node->rhs && (node->lhs->kind == ND_LVAR || node->lhs->kind == ND_GVAR) && node->rhs->ty->ty == ARRAY) {
         node->rhs = ary_to_ptr(node->rhs);
     }
 
@@ -484,20 +496,21 @@ int get_offset(Type *type, Map *lvars) {
     return offset;
 }
 
+/**
+ * base: ARRAY を表すノード
+ */
 Node *ary_to_ptr(Node *base) {
     if (base->ty->ty != ARRAY) {
         error("配列ではありません");
     }
-    Type *ty = ptr_to(base->ty->ptr_to);
-    Node *ptr = new_node_lvar(ty, get_offset(ty, f->lvars));
 
+    // &(base[0])
     Node *addr = calloc(1, sizeof(Node));
     addr->kind = ND_ADDR;
     addr->lhs = base;
-    addr->rhs = NULL;
-    addr->ty = ty;
+    addr->ty = ptr_to(base->ty->ptr_to);
 
-    return new_node(ND_ASSIGN, ptr, addr);
+    return addr;
 }
 
 Type *new_ty(int ty, int size) {
@@ -509,9 +522,9 @@ Type *new_ty(int ty, int size) {
 
 Type *int_ty() { return new_ty(INT, 4); }
 
-Type *ptr_to(Type *base) {
+Type *ptr_to(Type *dest) {
     Type *ty = new_ty(PTR, 8);
-    ty->ptr_to = base;
+    ty->ptr_to = dest;
     return ty;
 }
 

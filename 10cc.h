@@ -61,10 +61,10 @@ struct Token {
 };
 
 struct Type {
-    enum { INT, PTR, ARRAY } ty;
-    int size;  // INT: 4, PTR: 8
+    enum { INT, PTR, ARRAY } ty; // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
+    int size;  // INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
-    size_t array_size;
+    int array_size;  // 配列の要素数
 };
 
 typedef struct Type Type;
