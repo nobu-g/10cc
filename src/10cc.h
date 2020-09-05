@@ -47,6 +47,7 @@ typedef enum {
     TK_FOR,      // for
     TK_EOF,      // ファイルの終わりを表すトークン
     TK_INT,      // int
+    TK_CHAR,     // char
     TK_SIZEOF,   // sizeof
 } TokenKind;
 
@@ -61,7 +62,7 @@ struct Token {
 };
 
 struct Type {
-    enum { INT, PTR, ARRAY } ty; // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
+    enum { INT, CHAR, PTR, ARRAY } ty; // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
     int size;  // INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
     int array_size;  // 配列の要素数

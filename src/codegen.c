@@ -1,9 +1,28 @@
 #include "10cc.h"
 
-int num_argregs = 6;
+char *regs[] = {"r10", "r11", "rbx", "r12", "r13", "r14", "r15"};
+char *regs8[] = {"r10b", "r11b", "bl", "r12b", "r13b", "r14b", "r15b"};
+char *regs32[] = {"r10d", "r11d", "ebx", "r12d", "r13d", "r14d", "r15d"};
+
+int num_regs = sizeof(regs) / sizeof(*regs);
+
 char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+char *argregs8[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 
 int label_cnt = 0;
+
+char *node_to_reg(Node *node) {
+    switch (node->ty->ty) {
+    case PTR:
+    case ARRAY:
+        return regs[0];
+    case INT:
+        return regs32[0];
+    case CHAR:
+        return regs8[0];
+    }
+}
 
 // node が指す local variable の "スタック上のアドレス" をスタックに push する
 void gen_lval(Node *node) {
@@ -11,7 +30,7 @@ void gen_lval(Node *node) {
         error("ローカル変数ではありません: %d", node->kind);
     }
     printf("  lea rax, [rbp-%d]\n", node->offset);
-    printf("  push rax\n");  // local variable のアドレスをスタックにpush
+    printf("  push rax\n"); // local variable のアドレスをスタックにpush
 }
 
 // node が指す global variable の "メモリ上のアドレス" をスタックに push する
@@ -20,7 +39,7 @@ void gen_gval(Node *node) {
         error("グローバル変数ではありません: %d", node->kind);
     }
     printf("  lea rax, %s\n", node->name);
-    printf("  push rax\n");  // global variable のアドレスをスタックにpush
+    printf("  push rax\n"); // global variable のアドレスをスタックにpush
 }
 
 // スタックから入力を受け取り、nodeが表す演算の結果をスタックに戻す処理を生成する
@@ -42,15 +61,15 @@ void gen(Node *node) {
         return;
     case ND_GVAR:
         gen_gval(node);
-        printf("  pop rax\n"); // local variable のアドレスをraxにpop
+        printf("  pop rax\n");        // local variable のアドレスをraxにpop
         printf("  mov rax, [rax]\n"); // raxの指す先にアクセスして中身をraxにコピー
-        printf("  push rax\n"); // コピーしてきた値をスタックにpush
+        printf("  push rax\n");       // コピーしてきた値をスタックにpush
         return;
     case ND_LVAR: // node にアクセスして中身をスタックに push
         gen_lval(node);
-        printf("  pop rax\n"); // local variable のアドレスをraxにpop
-        printf("  mov rax, [rax]\n"); // raxの指す先にアクセスして中身をraxにコピー
-        printf("  push rax\n"); // コピーしてきた値をスタックにpush
+        printf("  pop rax\n");                          // local variable のアドレスをraxにpop
+        printf("  mov %s, [rax]\n", node_to_reg(node)); // raxの指す先にアクセスして中身をraxにコピー
+        printf("  push %s\n", regs[0]);                 // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
         if (node->lhs->kind == ND_DEREF) {
@@ -63,10 +82,10 @@ void gen(Node *node) {
             error("有効な左辺値ではありません．");
         }
         gen(node->rhs);
-        printf("  pop rdi\n");        // 右辺値
-        printf("  pop rax\n");        // 左辺値(アドレス)
-        printf("  mov [rax], rdi\n"); // rdiの値をraxが指すメモリにコピー
-        printf("  push rdi\n");       // 代入演算の結果を書き戻す
+        printf("  pop %s\n", regs[0]);                       // 右辺値
+        printf("  pop rax\n");                               // 左辺値(アドレス)
+        printf("  mov [rax], %s\n", node_to_reg(node->rhs)); // rdiの値をraxが指すメモリにコピー
+        printf("  push %s\n", regs[0]);                      // 代入演算の結果を書き戻す
         return;
     case ND_RETURN:
         gen(node->lhs);
@@ -78,8 +97,8 @@ void gen(Node *node) {
     case ND_IF:
         cur_label_cnt = label_cnt++;
         gen(node->cond);
-        printf("  pop rax\n");
-        printf("  cmp rax, 0\n");
+        printf("  pop %s\n", regs[0]);
+        printf("  cmp %s, 0\n", regs[0]);
         if (node->els) {
             printf("  je .Lelse%03d\n", cur_label_cnt);
             gen(node->then);
@@ -96,8 +115,8 @@ void gen(Node *node) {
         cur_label_cnt = label_cnt++;
         printf(".Lbegin%03d:\n", cur_label_cnt);
         gen(node->cond);
-        printf("  pop rax\n");
-        printf("  cmp rax, 0\n");
+        printf("  pop %s\n", regs[0]);
+        printf("  cmp %s, 0\n", regs[0]);
         printf("  je .Lend%03d\n", cur_label_cnt);
         gen(node->then);
         printf("  jmp .Lbegin%03d\n", cur_label_cnt);
@@ -108,8 +127,8 @@ void gen(Node *node) {
         cur_label_cnt = label_cnt++;
         printf(".Lbegin%03d:\n", cur_label_cnt);
         gen(node->cond);
-        printf("  pop rax\n");
-        printf("  cmp rax, 0\n");
+        printf("  pop %s\n", regs[0]);
+        printf("  cmp %s, 0\n", regs[0]);
         printf("  je .Lend%03d\n", cur_label_cnt);
         gen(node->then);
         gen(node->upd);
@@ -119,7 +138,7 @@ void gen(Node *node) {
     case ND_BLOCK:
         for (int i = 0; i < node->stmts->len; i++) {
             gen(node->stmts->data[i]);
-            printf("  pop rax\n");
+            printf("  pop %s\n", regs[0]);
         }
         return;
     case ND_ADDR:
@@ -133,17 +152,17 @@ void gen(Node *node) {
         return;
     case ND_DEREF:      // 右辺値参照
         gen(node->lhs); // アドレスがスタックに積まれる
-        printf("  pop rax\n");
-        printf("  mov rax, [rax]\n");
-        printf("  push rax\n");
+        printf("  pop %s\n", "rax");
+        printf("  mov %s, [%s]\n", node_to_reg(node->lhs), "rax");
+        printf("  push %s\n", regs[0]);
         return;
     }
 
     gen(node->lhs);
     gen(node->rhs);
 
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
+    printf("  pop rdi\n"); // rhs
+    printf("  pop rax\n"); // lhs
 
     switch (node->kind) {
     case ND_EQ:
@@ -180,7 +199,6 @@ void gen(Node *node) {
         printf("  idiv rdi\n");
         break;
     }
-
     printf("  push rax\n");
 }
 
@@ -197,13 +215,14 @@ void gen_func(Func *f) {
     // ローカル変数の領域を確保する
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", f->lvars->len * 8); // FIXME
+    printf("  sub rsp, %d\n", 8 * 100); // FIXME
 
     // 引数の値を stack に push してローカル変数と同じように扱えるように
     for (int i = 0; i < f->args->len; i++) {
         printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
         Node *arg = f->args->data[i];
         printf("  sub rax, %d\n", arg->offset); // raxをoffsetだけ移動
+        // TODO
         printf("  mov [rax], %s\n", argregs[i]); // 第 i 引数の値をraxが指すメモリにコピー
     }
 

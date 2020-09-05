@@ -17,8 +17,12 @@ Node *ary_to_ptr(Node *node);
 
 Type *new_ty(int ty, int size);
 Type *int_ty();
+Type *char_ty();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
+
+Type *read_type();
+Token *read_ident();
 
 /**
  * program = (func|gvar)*
@@ -27,20 +31,14 @@ void program() {
     funcs = create_map();
     gvars = create_map();
     while (!at_eof()) {
-        Token *tok = consume(TK_INT, NULL);
+        Type *type = read_type();
+        if (!type) {
+            error_at(token->loc, "有効な型ではありません");
+        }
+        Token *tok = read_ident();
         if (!tok) {
-            fprintf(stderr, "tok: %s", token->str);
-            error("有効な型ではありません");
+            error_at(token->loc, "有効な識別子ではありません");
         }
-        Type *type = int_ty();
-        while (consume(TK_RESERVED, "*")) {
-            type = ptr_to(type);
-        }
-        tok = consume(TK_IDENT, NULL);
-        if (!tok) {
-            error("識別子ではありません");
-        }
-
         if (consume(TK_RESERVED, "(")) {
             // 関数
             func(tok->str, type);
@@ -49,12 +47,10 @@ void program() {
             if (get_elem_from_map(gvars, tok->str)) {
                 error("グローバル変数 %s はすでに宣言されています", tok->str);
             }
-
             if (consume(TK_RESERVED, "[")) {
                 type = ary_of(type, expect_number());
                 expect("]");
             }
-
             Node *node = new_node_gvar(type, tok->str);
             add_elem_to_map(gvars, tok->str, node);
             expect(";");
@@ -72,15 +68,12 @@ void func(char *name, Type *ret_type) {
     f->args = create_vector();
     f->ret_type = ret_type;
     for (;;) {
-        Token *tok = consume(TK_INT, NULL);
-        if (tok) {
-            Type *arg_type = int_ty();
-            while (consume(TK_RESERVED, "*")) {
-                arg_type = ptr_to(arg_type);
-            }
-            tok = consume(TK_IDENT, NULL);
+        Type *arg_type = read_type();
+        if (arg_type) {
+            Token *tok = read_ident();
             if (!tok) {
-                error("変数名ではありません");
+                fprintf(stderr, "type: %d\n", arg_type->ty);
+                error_at(token->loc, "有効な識別子ではありません");
             }
             if (get_elem_from_map(f->lvars, tok->str)) {
                 error("変数 %s はすでに宣言されています", tok->str);
@@ -294,15 +287,11 @@ Node *unary() {
  */
 Node *primary() {
     // 変数宣言
-    Token *tok = consume(TK_INT, NULL);
-    if (tok) {
-        Type *type = int_ty();
-        while (consume(TK_RESERVED, "*")) {
-            type = ptr_to(type);
-        }
-        tok = consume(TK_IDENT, NULL);
+    Type *type = read_type();
+    if (type) {
+        Token *tok = read_ident();
         if (!tok) {
-            error("変数名ではありません");
+            error_at(token->loc, "有効な識別子ではありません");
         }
         if (get_elem_from_map(f->lvars, tok->str)) {
             error("変数 %s はすでに宣言されています", tok->str);
@@ -317,7 +306,7 @@ Node *primary() {
     }
 
     // 変数参照 or 関数呼び出し
-    tok = consume(TK_IDENT, NULL);
+    Token *tok = read_ident();
     if (tok) {
         // 関数呼び出し
         if (consume(TK_RESERVED, "(")) {
@@ -364,8 +353,8 @@ Node *primary() {
 
     Node *node = new_node_num(expect_number());
     if (consume(TK_RESERVED, "[")) {
-        tok = consume(TK_IDENT, NULL);
         Node *lhs, *rhs;
+        tok = read_ident();
         if (tok) {
             lhs = get_elem_from_map(f->lvars, tok->str);
             if (!lhs) {
@@ -482,18 +471,9 @@ int get_offset(Type *type, Map *lvars) {
     int offset = 0;
     for (int i = 0; i < lvars->len; i++) {
         Node *node = lvars->vals->data[i];
-        if (node->ty->ty == ARRAY) {
-            offset += node->ty->array_size * 8;
-        } else {
-            offset += 8;
-        }
+        offset += node->ty->size;
     }
-    if (type->ty == ARRAY) {
-        offset += 8;
-    } else {
-        offset += 8;
-    }
-    return offset;
+    return offset + type->size;
 }
 
 /**
@@ -522,6 +502,8 @@ Type *new_ty(int ty, int size) {
 
 Type *int_ty() { return new_ty(INT, 4); }
 
+Type *char_ty() { return new_ty(CHAR, 1); }
+
 Type *ptr_to(Type *dest) {
     Type *ty = new_ty(PTR, 8);
     ty->ptr_to = dest;
@@ -534,3 +516,22 @@ Type *ary_of(Type *base, int size) {
     ty->array_size = size;
     return ty;
 }
+
+// 型を読み込んでそれを返す．読み込めなかったら NULL を返す．
+Type *read_type() {
+    Type *ty;
+    if (consume(TK_INT, NULL)) {
+        ty = int_ty();
+    } else if (consume(TK_CHAR, NULL)) {
+        ty = char_ty();
+    } else {
+        return NULL;
+    }
+    while (consume(TK_RESERVED, "*")) {
+        ty = ptr_to(ty);
+    }
+    return ty;
+}
+
+// 識別子を読み込んでそれを返す．読み込めなかったら NULL を返す．
+Token *read_ident() { return consume(TK_IDENT, NULL); }
