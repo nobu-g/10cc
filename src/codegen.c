@@ -12,6 +12,7 @@ char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 
 int label_cnt = 0;
 
+// 一時的に常に0番目のレジスタを返す
 char *node_to_reg(Node *node) {
     switch (node->ty->ty) {
     case PTR:
@@ -21,6 +22,18 @@ char *node_to_reg(Node *node) {
         return regs32[0];
     case CHAR:
         return regs8[0];
+    }
+}
+
+char *node_to_argreg(Node *node, int i) {
+    switch (node->ty->ty) {
+    case PTR:
+    case ARRAY:
+        return argregs[i];
+    case INT:
+        return argregs32[i];
+    case CHAR:
+        return argregs8[i];
     }
 }
 
@@ -212,18 +225,16 @@ void gen_func(Func *f) {
     printf("\n%s:\n", f->name);
 
     // prologue
-    // ローカル変数の領域を確保する
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", 8 * 100); // FIXME
+    printf("  sub rsp, %d\n", get_offset(f->lvars));  // ローカル変数の領域を確保する
 
     // 引数の値を stack に push してローカル変数と同じように扱えるように
     for (int i = 0; i < f->args->len; i++) {
-        printf("  mov rax, rbp\n"); // ベースポインタの値をraxに読み込み
-        Node *arg = f->args->data[i];
-        printf("  sub rax, %d\n", arg->offset); // raxをoffsetだけ移動
-        // TODO
-        printf("  mov [rax], %s\n", argregs[i]); // 第 i 引数の値をraxが指すメモリにコピー
+        Node *arg = f->args->data[i];  // ND_LVAR
+        printf("  lea rax, [rbp-%d]\n", arg->offset);
+        char *argreg = node_to_argreg(arg, i);
+        printf("  mov [rax], %s\n", argreg); // 第 i 引数の値をraxが指すメモリにコピー
     }
 
     // 中身のコードを吐く

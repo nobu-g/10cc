@@ -12,7 +12,6 @@ Node *new_node_func_call(char *name, Vector *args, Type *type);
 void error_at(char *loc, char *fmt, ...);
 
 bool at_eof();
-int get_offset(Type *type, Map *lvars);
 Node *ary_to_ptr(Node *node);
 
 Type *new_ty(int ty, int size);
@@ -78,7 +77,7 @@ void func(char *name, Type *ret_type) {
             if (get_elem_from_map(f->lvars, tok->str)) {
                 error("変数 %s はすでに宣言されています", tok->str);
             }
-            Node *node = new_node_lvar(arg_type, get_offset(arg_type, f->lvars));
+            Node *node = new_node_lvar(arg_type, get_offset(f->lvars) + arg_type->size);
             push(f->args, node);
             add_elem_to_map(f->lvars, tok->str, node);
             if (!consume(TK_RESERVED, ",")) {
@@ -300,7 +299,7 @@ Node *primary() {
             type = ary_of(type, expect_number());
             expect("]");
         }
-        Node *node = new_node_lvar(type, get_offset(type, f->lvars));
+        Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
         add_elem_to_map(f->lvars, tok->str, node);
         return node;
     }
@@ -467,13 +466,13 @@ bool at_eof() { return token->kind == TK_EOF; }
  * lvars を参照してこれまで確保されたスタック領域の和を計算し，
  * type 型の新たな変数を格納できるだけの offset を返す
  */
-int get_offset(Type *type, Map *lvars) {
+int get_offset(Map *lvars) {
     int offset = 0;
     for (int i = 0; i < lvars->len; i++) {
         Node *node = lvars->vals->data[i];
         offset += node->ty->size;
     }
-    return offset + type->size;
+    return offset;
 }
 
 /**

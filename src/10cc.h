@@ -155,6 +155,7 @@ Node *add();
 Node *mul();
 Node *unary();
 Node *primary();
+int get_offset(Map *lvars);
 
 void gen_x86();
 
