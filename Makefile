@@ -1,16 +1,27 @@
-CFLAGS=-std=c11 -g -static
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+OUTDIR := build
+SRCDIR := src
+SCRIPTDIR := scripts
+TARGET := $(OUTDIR)/10cc
+CFLAGS := -std=c11 -g -static
 
-10cc: $(OBJS)
-	$(CC) -o 10cc $(OBJS) $(LDFLAGS)
+SRCS := $(wildcard $(SRCDIR)/*.c)
+OBJS := $(patsubst %.c,$(OUTDIR)/%.o,$(notdir $(SRCS)))
+$(warning $(OBJS))
 
-$(OBJS): 10cc.h $(SRCS)
+.PHONY: all test clean
+all: $(TARGET)
 
-test: 10cc
-	./test.sh
+test: $(TARGET)
+	$(SCRIPTDIR)/test.sh
+
+# build executable
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
+
+# compile C sources
+$(OUTDIR)/%.o: $(SRCDIR)/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f 10cc *.o tmp*
-
-.PHONY: test clean
+	rm -r $(OUTDIR)/*

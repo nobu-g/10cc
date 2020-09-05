@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -u
 
@@ -6,12 +6,12 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./10cc "$input" >tmp.s
-  cc -c tmp.s    # -> tmp.o
-  cc -c helper.c # -> helper.o
-  cc -static -o tmp tmp.o helper.o
-  # cc -o tmp tmp.s
-  ./tmp
+  ./build/10cc "$input" > tests/tmp.s
+  cc -c tests/tmp.s -o tests/tmp.o
+  cc -c tests/helper.c -o tests/helper.o
+  cc -static -o tests/tmp tests/tmp.o tests/helper.o
+  # cc -o tests/tmp tests/tmp.s
+  ./tests/tmp
   actual="$?"
 
   if [[ "$actual" = "$expected" ]]; then
