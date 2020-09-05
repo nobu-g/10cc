@@ -5,6 +5,7 @@ TARGET := $(OUTDIR)/10cc
 CFLAGS := -std=c11 -g -static
 
 SRCS := $(wildcard $(SRCDIR)/*.c)
+HEADERS := $(wildcard $(SRCDIR)/*.h)
 OBJS := $(patsubst %.c,$(OUTDIR)/%.o,$(notdir $(SRCS)))
 $(warning $(OBJS))
 
@@ -19,7 +20,7 @@ $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 # compile C sources
-$(OUTDIR)/%.o: $(SRCDIR)/%.c
+$(OUTDIR)/%.o: $(SRCDIR)/%.c $(HEADERS)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
