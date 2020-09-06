@@ -24,6 +24,8 @@ Type *ary_of(Type *base, int size);
 Type *read_type();
 Token *read_ident();
 
+Node *declaration();
+
 
 Program *parse() {
     prog = calloc(1, sizeof(Program));
@@ -76,28 +78,12 @@ void func(char *name, Type *ret_type) {
     f->lvars = create_map();
     f->args = create_vector();
     f->ret_type = ret_type;
-    for (;;) {
-        Type *arg_type = read_type();
-        if (arg_type) {
-            Token *tok = read_ident();
-            if (!tok) {
-                fprintf(stderr, "type: %d\n", arg_type->ty);
-                error_at(token->loc, "有効な識別子ではありません");
-            }
-            if (get_elem_from_map(f->lvars, tok->str)) {
-                error("変数 %s はすでに宣言されています", tok->str);
-            }
-            Node *node = new_node_lvar(arg_type, get_offset(f->lvars) + arg_type->size);
-            push(f->args, node);
-            add_elem_to_map(f->lvars, tok->str, node);
-            if (!consume(TK_RESERVED, ",")) {
-                break;
-            }
-        } else {
-            break;
+    while (!consume(TK_RESERVED, ")")) {
+        if (f->args->len > 0) {
+            expect(",");
         }
+        push(f->args, declaration());
     }
-    expect(")");
     add_elem_to_map(prog->fns, f->name, f);
     expect("{");
     f->body = create_vector();
@@ -108,11 +94,12 @@ void func(char *name, Type *ret_type) {
 
 /**
  * stmt = expr ";"
+ *      | T ident ";"
  *      | "{" stmt* "}"
+ *      | "return" expr ";"
  *      | "if" "(" expr ")" stmt ("else" stmt)?
  *      | "while" "(" expr ")" stmt
  *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
- *      | "return" expr ";"
  */
 Node *stmt() {
     Node *node;
@@ -165,11 +152,13 @@ Node *stmt() {
         expect(")");
         node->then = stmt();
         return node;
+    } else if (peek(TK_INT, NULL) || peek(TK_CHAR, NULL)) {
+        node = declaration();
     } else {
         node = expr();
     }
     if (!consume(TK_RESERVED, ";")) {
-        error_at(token->loc, "';'ではないトークンです");
+        error_at(token->loc, "expected ';'");
     }
     return node;
 }
@@ -291,29 +280,9 @@ Node *unary() {
 /**
  * primary = num              // 即値
  *         | ident ("(" ")")  // 変数参照 or 関数呼び出し
- *         | "int" ident      // 変数宣言
  *         | "(" expr ")"     // 括弧
  */
 Node *primary() {
-    // 変数宣言
-    Type *type = read_type();
-    if (type) {
-        Token *tok = read_ident();
-        if (!tok) {
-            error_at(token->loc, "有効な識別子ではありません");
-        }
-        if (get_elem_from_map(f->lvars, tok->str)) {
-            error("変数 %s はすでに宣言されています", tok->str);
-        }
-        if (consume(TK_RESERVED, "[")) {
-            type = ary_of(type, expect_number());
-            expect("]");
-        }
-        Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
-        add_elem_to_map(f->lvars, tok->str, node);
-        return node;
-    }
-
     // 変数参照 or 関数呼び出し
     Token *tok = read_ident();
     if (tok) {
@@ -544,3 +513,25 @@ Type *read_type() {
 
 // 識別子を読み込んでそれを返す．読み込めなかったら NULL を返す．
 Token *read_ident() { return consume(TK_IDENT, NULL); }
+
+
+/*
+ * declaration = T ident ("[" num? "]")?
+ */
+Node *declaration() {
+    Type *type = read_type();
+    Token *tok = read_ident();
+    if (!tok) {
+        error_at(token->loc, "Invalid identifier");
+    }
+    if (get_elem_from_map(f->lvars, tok->str)) {
+        error("Redefinition of '%s'", tok->str);
+    }
+    if (consume(TK_RESERVED, "[")) {
+        type = ary_of(type, expect_number());
+        expect("]");
+    }
+    Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
+    add_elem_to_map(f->lvars, tok->str, node);
+    return node;
+}

@@ -19,6 +19,19 @@ Token *consume(TokenKind kind, char *str) {
     return tok;
 }
 
+Token *peek(TokenKind kind, char *str) {
+    if (token->kind != kind) {
+        return NULL;
+    }
+
+    if (str != NULL) {
+        if (strcmp(token->str, str) != 0) {
+            return NULL;
+        }
+    }
+    return token;
+}
+
 void expect(char *str) {
     if (token->kind != TK_RESERVED || strcmp(token->str, str) != 0) {
         error_at(token->loc, "'%s'ではありません", str);

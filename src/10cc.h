@@ -146,6 +146,7 @@ extern Token *token;
 void tokenize();
 
 Token *consume(TokenKind kind, char *str);
+Token *peek(TokenKind kind, char *str);
 void expect(char *op);
 int expect_number();
 
