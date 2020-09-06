@@ -14,7 +14,6 @@
 // 6: NONE
 #define DEBUG 6
 
-
 /*
  * container.c
  */
@@ -24,9 +23,9 @@ typedef struct {
     int len;
 } Vector;
 
-Vector *create_vector();
-void push(Vector *vec, void *elem);
-void *get_elem_from_vec(Vector *vec, int index);
+Vector *vec_create();
+void vec_push(Vector *vec, void *elem);
+void *vec_get(Vector *vec, int index);
 
 typedef struct {
     Vector *keys;
@@ -34,10 +33,9 @@ typedef struct {
     int len;
 } Map;
 
-Map *create_map();
-void add_elem_to_map(Map *map, char *key, void *val);
-void *get_elem_from_map(Map *map, char *key);
-
+Map *map_create();
+void map_insert(Map *map, char *key, void *val);
+void *map_at(Map *map, char *key);
 
 typedef enum {
     TK_RESERVED,  // operators and reserved words
@@ -60,7 +58,7 @@ typedef struct Type Type;
 
 struct Type {
     enum { INT, CHAR, PTR, ARRAY } ty;  // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
-    int size;  // INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
+    int size;                           // INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
     int array_size;  // 配列の要素数
 };
@@ -78,28 +76,27 @@ typedef struct {
     Map *gvars;
 } Program;
 
-
 typedef enum {
-    ND_ADD,       // +
-    ND_SUB,       // -
-    ND_MUL,       // *
-    ND_DIV,       // /
-    ND_EQ,        // ==
-    ND_NE,        // ==
-    ND_LE,        // <=
-    ND_LT,        // <
-    ND_ASSIGN,    // =
-    ND_RETURN,    // return
-    ND_IF,        // if
-    ND_WHILE,     // while
-    ND_FOR,       // for
-    ND_BLOCK,     // block
-    ND_FUNC_CALL, // function call
-    ND_LVAR,      // local variable
-    ND_GVAR,      // global variable
-    ND_NUM,       // number
-    ND_ADDR,      // unary &
-    ND_DEREF,     // unary *
+    ND_ADD,        // +
+    ND_SUB,        // -
+    ND_MUL,        // *
+    ND_DIV,        // /
+    ND_EQ,         // ==
+    ND_NE,         // ==
+    ND_LE,         // <=
+    ND_LT,         // <
+    ND_ASSIGN,     // =
+    ND_RETURN,     // return
+    ND_IF,         // if
+    ND_WHILE,      // while
+    ND_FOR,        // for
+    ND_BLOCK,      // block
+    ND_FUNC_CALL,  // function call
+    ND_LVAR,       // local variable
+    ND_GVAR,       // global variable
+    ND_NUM,        // number
+    ND_ADDR,       // unary &
+    ND_DEREF,      // unary *
 } NodeKind;
 
 typedef struct Node Node;
@@ -121,10 +118,10 @@ struct Node {
     Node *upd;
 
     // used for block
-    Vector *stmts; // Vector<Node *>
+    Vector *stmts;  // Vector<Node *>
 
     // used for function
-    Vector *args; // Vector<Node *>
+    Vector *args;  // Vector<Node *>
     Node *impl;
 
     char *name;  // used only if kind in (ND_FUNC, ND_GVAR)
@@ -133,7 +130,6 @@ struct Node {
     int offset;  // used only if kind=ND_LVAR
 };
 
-
 /*
  * tokenize.c
  */
@@ -141,40 +137,25 @@ extern char *user_input;
 extern Token *token;
 
 void tokenize();
-
 Token *consume(TokenKind kind, char *str);
 Token *peek(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
-
 
 /*
  * parse.c
  */
 Program *parse();
-void func();
-Node *stmt();
-Node *expr();
-Node *assign();
-Node *equality();
-Node *relational();
-Node *add();
-Node *mul();
-Node *unary();
-Node *primary();
 int get_offset(Map *lvars);
-
 
 /*
  * sema.c
  */
 void sema(Program *prog);
 
-
 /*
  * codegen.c
  */
 void gen_x86(Program *prog);
-
 
 /*
  * utils.c

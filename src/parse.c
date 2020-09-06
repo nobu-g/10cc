@@ -1,9 +1,19 @@
 #include "10cc.h"
 
-Program *prog;  // The program
-Func *f;  // The function being parsed
+Program *prog; // The program
+Func *f;       // The function being parsed
 
 void top_level();
+void func();
+Node *stmt();
+Node *expr();
+Node *assign();
+Node *equality();
+Node *relational();
+Node *add();
+Node *mul();
+Node *unary();
+Node *primary();
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
@@ -23,11 +33,10 @@ Node *ary_to_ptr(Node *node);
 Type *read_type();
 Node *declaration();
 
-
 Program *parse() {
     prog = calloc(1, sizeof(Program));
-    prog->fns = create_map();
-    prog->gvars = create_map();
+    prog->fns = map_create();
+    prog->gvars = map_create();
     while (!at_eof()) {
         top_level();
     }
@@ -49,7 +58,7 @@ void top_level() {
             func(tok->str, type);
         } else {
             // グローバル変数
-            if (get_elem_from_map(prog->gvars, tok->str)) {
+            if (map_at(prog->gvars, tok->str)) {
                 error("グローバル変数 %s はすでに宣言されています", tok->str);
             }
             if (consume(TK_RESERVED, "[")) {
@@ -57,7 +66,7 @@ void top_level() {
                 expect(TK_RESERVED, "]");
             }
             Node *node = new_node_gvar(type, tok->str);
-            add_elem_to_map(prog->gvars, tok->str, node);
+            map_insert(prog->gvars, tok->str, node);
             expect(TK_RESERVED, ";");
         }
     }
@@ -69,20 +78,20 @@ void func(char *name, Type *ret_type) {
      */
     f = calloc(1, sizeof(Func));
     f->name = name;
-    f->lvars = create_map();
-    f->args = create_vector();
+    f->lvars = map_create();
+    f->args = vec_create();
     f->ret_type = ret_type;
     while (!consume(TK_RESERVED, ")")) {
         if (f->args->len > 0) {
             expect(TK_RESERVED, ",");
         }
-        push(f->args, declaration());
+        vec_push(f->args, declaration());
     }
-    add_elem_to_map(prog->fns, f->name, f);
+    map_insert(prog->fns, f->name, f);
     expect(TK_RESERVED, "{");
-    f->body = create_vector();
+    f->body = vec_create();
     while (!consume(TK_RESERVED, "}")) {
-        push(f->body, stmt());
+        vec_push(f->body, stmt());
     }
 }
 
@@ -100,9 +109,9 @@ Node *stmt() {
     if (consume(TK_RESERVED, "{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
-        node->stmts = create_vector();
+        node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
-            push(node->stmts, (void *)stmt());
+            vec_push(node->stmts, (void *)stmt());
         }
         return node;
     } else if (consume(TK_RESERVED, "return")) {
@@ -281,21 +290,21 @@ Node *primary() {
     if (tok) {
         if (consume(TK_RESERVED, "(")) {
             // function call
-            Vector *args = create_vector();
+            Vector *args = vec_create();
             for (;;) {
                 if (consume(TK_RESERVED, ")")) {
                     break;
                 }
-                push(args, expr());
+                vec_push(args, expr());
                 consume(TK_RESERVED, ",");
             }
-            Func *f_called = get_elem_from_map(prog->fns, tok->str);
+            Func *f_called = map_at(prog->fns, tok->str);
             return new_node_func_call(tok->str, args, f_called->ret_type);
         } else if (consume(TK_RESERVED, "[")) {
             // variable reference
-            Node *lhs = get_elem_from_map(f->lvars, tok->str);
+            Node *lhs = map_at(f->lvars, tok->str);
             if (!lhs) {
-                lhs = get_elem_from_map(prog->gvars, tok->str);
+                lhs = map_at(prog->gvars, tok->str);
                 if (!lhs) {
                     error("%sは未定義です", tok->str);
                 }
@@ -305,9 +314,9 @@ Node *primary() {
             Node *sum = new_node(ND_ADD, lhs, rhs);
             return new_node(ND_DEREF, sum, NULL);
         } else {
-            Node *lvar = get_elem_from_map(f->lvars, tok->str);
+            Node *lvar = map_at(f->lvars, tok->str);
             if (!lvar) {
-                Node *gvar = get_elem_from_map(prog->gvars, tok->str);
+                Node *gvar = map_at(prog->gvars, tok->str);
                 if (!gvar) {
                     error("%sは未定義です", tok->str);
                 }
@@ -327,7 +336,7 @@ Node *primary() {
         Node *lhs, *rhs;
         tok = consume(TK_IDENT, NULL);
         if (tok) {
-            lhs = get_elem_from_map(f->lvars, tok->str);
+            lhs = map_at(f->lvars, tok->str);
             if (!lhs) {
                 error("%sは未定義です", tok->str);
             }
@@ -506,7 +515,7 @@ Type *read_type() {
 Node *declaration() {
     Type *type = read_type();
     Token *tok_ident = expect(TK_IDENT, NULL);
-    if (get_elem_from_map(f->lvars, tok_ident->str)) {
+    if (map_at(f->lvars, tok_ident->str)) {
         error("Redefinition of '%s'", tok_ident->str);
     }
     if (consume(TK_RESERVED, "[")) {
@@ -514,11 +523,11 @@ Node *declaration() {
         if (token) {
             type = ary_of(type, token->val);
         } else {
-            type = ary_of(type, 0);  // tentatively, array length is 0
+            type = ary_of(type, 0); // tentatively, array length is 0
         }
         expect(TK_RESERVED, "]");
     }
     Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
-    add_elem_to_map(f->lvars, tok_ident->str, node);
+    map_insert(f->lvars, tok_ident->str, node);
     return node;
 }

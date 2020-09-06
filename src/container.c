@@ -2,7 +2,7 @@
 
 int INITIAL_VECTOR_SIZE = 32;
 
-Vector *create_vector() {
+Vector *vec_create() {
     Vector *vec = malloc(sizeof(Vector));
     vec->data = malloc(sizeof(void *) * INITIAL_VECTOR_SIZE);
     vec->capacity = INITIAL_VECTOR_SIZE;
@@ -10,7 +10,7 @@ Vector *create_vector() {
     return vec;
 }
 
-void push(Vector *vec, void *elem) {
+void vec_push(Vector *vec, void *elem) {
     if (vec->len == vec->capacity) {
         vec->capacity *= 2;
         vec->data = realloc(vec->data, sizeof(void *) * vec->capacity);
@@ -18,31 +18,29 @@ void push(Vector *vec, void *elem) {
     vec->data[vec->len++] = elem;
 }
 
-void *get_elem_from_vec(Vector *vec, int index) {
-    return vec->data[index];
-}
+void *vec_get(Vector *vec, int index) { return vec->data[index]; }
 
-Map *create_map() {
+Map *map_create() {
     Map *map = malloc(sizeof(Map));
-    map->keys = create_vector();
-    map->vals = create_vector();
+    map->keys = vec_create();
+    map->vals = vec_create();
     map->len = 0;
     return map;
 }
 
-void add_elem_to_map(Map *map, char *key, void *val) {
+void map_insert(Map *map, char *key, void *val) {
     for (int i = 0; i < map->len; i++) {
         if (strcmp(map->keys->data[i], key) == 0) {
             map->vals->data[i] = val;
             return;
         }
     }
-    push(map->keys, key);
-    push(map->vals, val);
+    vec_push(map->keys, key);
+    vec_push(map->vals, val);
     map->len++;
 }
 
-void *get_elem_from_map(Map *map, char *key) {
+void *map_at(Map *map, char *key) {
     for (int i = 0; i < map->len; i++) {
         if ((strcmp(map->keys->data[i], key) == 0)) {
             return map->vals->data[i];
