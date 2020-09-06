@@ -20,7 +20,6 @@ Node *new_node_num(int val);
 Node *new_node_lvar(Type *type, int offset);
 Node *new_node_gvar(Type *type, char *name);
 Node *new_node_func_call(char *name, Vector *args, Type *type);
-void error_at(char *loc, char *fmt, ...);
 
 bool at_eof();
 Type *new_ty(int ty, int size);
@@ -54,10 +53,10 @@ void top_level() {
             error_at(token->loc, "Invalid identifier");
         }
         if (consume(TK_RESERVED, "(")) {
-            // 関数
+            // function
             func(tok->str, type);
         } else {
-            // グローバル変数
+            // global variable
             if (map_at(prog->gvars, tok->str)) {
                 error("グローバル変数 %s はすでに宣言されています", tok->str);
             }
@@ -96,13 +95,13 @@ void func(char *name, Type *ret_type) {
 }
 
 /**
- * stmt = expr ";"
- *      | T ident ";"
- *      | "{" stmt* "}"
+ * stmt = "{" stmt* "}"
  *      | "return" expr ";"
  *      | "if" "(" expr ")" stmt ("else" stmt)?
  *      | "while" "(" expr ")" stmt
  *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+ *      | declaration ";"
+ *      | expr ";"
  */
 Node *stmt() {
     Node *node;
@@ -163,6 +162,29 @@ Node *stmt() {
     if (!consume(TK_RESERVED, ";")) {
         error_at(token->loc, "expected ';'");
     }
+    return node;
+}
+
+/*
+ * declaration = T ident ("[" num? "]")?
+ */
+Node *declaration() {
+    Type *type = read_type();
+    Token *tok_ident = expect(TK_IDENT, NULL);
+    if (map_at(f->lvars, tok_ident->str)) {
+        error("Redefinition of '%s'", tok_ident->str);
+    }
+    if (consume(TK_RESERVED, "[")) {
+        Token *token = consume(TK_NUM, NULL);
+        if (token) {
+            type = ary_of(type, token->val);
+        } else {
+            type = ary_of(type, 0);  // tentatively, array length is 0
+        }
+        expect(TK_RESERVED, "]");
+    }
+    Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
+    map_insert(f->lvars, tok_ident->str, node);
     return node;
 }
 
@@ -281,32 +303,38 @@ Node *unary() {
 }
 
 /**
- * primary = num              // 即値
- *         | ident ("(" ")")  // 変数参照 or 関数呼び出し
- *         | "(" expr ")"     // 括弧
+ * primary = num               // immediate value
+ *         | ident ("(" ")")?  // variable reference or function call
+ *         | "(" expr ")"      // parenthesis
  */
 Node *primary() {
+    // "(" expr ")"
+    if (consume(TK_RESERVED, "(")) {
+        Node *node = expr();
+        expect(TK_RESERVED, ")");
+        return node;
+    }
+
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
         if (consume(TK_RESERVED, "(")) {
             // function call
             Vector *args = vec_create();
-            for (;;) {
-                if (consume(TK_RESERVED, ")")) {
-                    break;
+            while (!consume(TK_RESERVED, ")")) {
+                if (args->len > 0) {
+                    expect(TK_RESERVED, ",");
                 }
                 vec_push(args, expr());
-                consume(TK_RESERVED, ",");
             }
             Func *f_called = map_at(prog->fns, tok->str);
             return new_node_func_call(tok->str, args, f_called->ret_type);
         } else if (consume(TK_RESERVED, "[")) {
-            // variable reference
+            // variable reference (subscript access)
             Node *lhs = map_at(f->lvars, tok->str);
             if (!lhs) {
                 lhs = map_at(prog->gvars, tok->str);
                 if (!lhs) {
-                    error("%sは未定義です", tok->str);
+                    error("undefined variable: '%s'", tok->str);
                 }
             }
             Node *rhs = new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
@@ -314,23 +342,20 @@ Node *primary() {
             Node *sum = new_node(ND_ADD, lhs, rhs);
             return new_node(ND_DEREF, sum, NULL);
         } else {
+            // variable reference
             Node *lvar = map_at(f->lvars, tok->str);
             if (!lvar) {
                 Node *gvar = map_at(prog->gvars, tok->str);
                 if (!gvar) {
-                    error("%sは未定義です", tok->str);
+                    error("undefined variable: '%s'", tok->str);
                 }
                 return new_node_gvar(gvar->ty, gvar->name);
             }
             return new_node_lvar(lvar->ty, lvar->offset);
         }
     }
-    if (consume(TK_RESERVED, "(")) {
-        Node *node = expr();
-        expect(TK_RESERVED, ")");
-        return node;
-    }
 
+    // x[y] is equivalent to *(x+y)
     Node *node = new_node_num(expect(TK_NUM, NULL)->val);
     if (consume(TK_RESERVED, "[")) {
         Node *lhs, *rhs;
@@ -338,7 +363,7 @@ Node *primary() {
         if (tok) {
             lhs = map_at(f->lvars, tok->str);
             if (!lhs) {
-                error("%sは未定義です", tok->str);
+                error("undefined variable: '%s'", tok->str);
             }
             if (lhs->ty->ty == ARRAY || lhs->ty->ty == PTR) {
                 rhs = new_node(ND_MUL, node, new_node_num(lhs->ty->ptr_to->size));
@@ -507,27 +532,4 @@ Type *read_type() {
         ty = ptr_to(ty);
     }
     return ty;
-}
-
-/*
- * declaration = T ident ("[" num? "]")?
- */
-Node *declaration() {
-    Type *type = read_type();
-    Token *tok_ident = expect(TK_IDENT, NULL);
-    if (map_at(f->lvars, tok_ident->str)) {
-        error("Redefinition of '%s'", tok_ident->str);
-    }
-    if (consume(TK_RESERVED, "[")) {
-        Token *token = consume(TK_NUM, NULL);
-        if (token) {
-            type = ary_of(type, token->val);
-        } else {
-            type = ary_of(type, 0);  // tentatively, array length is 0
-        }
-        expect(TK_RESERVED, "]");
-    }
-    Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
-    map_insert(f->lvars, tok_ident->str, node);
-    return node;
 }
