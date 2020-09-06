@@ -32,20 +32,25 @@ Token *peek(TokenKind kind, char *str) {
     return token;
 }
 
-void expect(char *str) {
-    if (token->kind != TK_RESERVED || strcmp(token->str, str) != 0) {
-        error_at(token->loc, "'%s'ではありません", str);
+Token *expect(TokenKind kind, char *str) {
+    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
+        if (str) {
+            error_at(token->loc, "'%s' expected", str);
+        } else {
+            char *kind_name;
+            switch (kind) {
+            case TK_RESERVED: kind_name = "reserved token"; break;
+            case TK_IDENT:    kind_name = "identifier"; break;
+            case TK_NUM:      kind_name = "number"; break;
+            case TK_EOF:      kind_name = "EOF"; break;
+            }
+            error_at(token->loc, "%s expected", kind_name);
+        }
     }
-    token = token->next;
-}
 
-int expect_number() {
-    if (token->kind != TK_NUM) {
-        error_at(token->loc, "数ではありません");
-    }
-    int val = token->val;
+    Token *tok = token;
     token = token->next;
-    return val;
+    return tok;
 }
 
 Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
@@ -62,6 +67,35 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     return tok;
 }
 
+bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
+
+char *read_reserved(char *p) {
+    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof"};
+    for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
+        int len = strlen(kws[i]);
+        if (startswith(p, kws[i]) && !is_alnum(p[len])) {
+            return kws[i];
+        }
+    }
+
+    char *multi_ops[] = {"<=", ">=", "==", "!="};
+    for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
+        int len = strlen(multi_ops[i]);
+        if (startswith(p, multi_ops[i])) {
+            return multi_ops[i];
+        }
+    }
+
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
+    for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
+        int len = strlen(single_ops[i]);
+        if (startswith(p, single_ops[i])) {
+            return single_ops[i];
+        }
+    }
+    return NULL;
+}
+
 void tokenize() {
     Token head;
     head.next = NULL;
@@ -74,54 +108,15 @@ void tokenize() {
             continue;
         }
 
-        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
-            cur = new_token(TK_RETURN, cur, p, 6);
-            p += 6;
+        char *kw = read_reserved(p);
+        if (kw) {
+            int len = strlen(kw);
+            cur = new_token(TK_RESERVED, cur, p, len);
+            p += len;
             continue;
         }
 
-        if (strncmp(p, "if", 2) == 0 && !is_alnum(p[2])) {
-            cur = new_token(TK_IF, cur, p, 2);
-            p += 2;
-            continue;
-        }
-
-        if (strncmp(p, "else", 4) == 0 && !is_alnum(p[4])) {
-            cur = new_token(TK_ELSE, cur, p, 4);
-            p += 4;
-            continue;
-        }
-
-        if (strncmp(p, "while", 5) == 0 && !is_alnum(p[5])) {
-            cur = new_token(TK_WHILE, cur, p, 5);
-            p += 5;
-            continue;
-        }
-
-        if (strncmp(p, "for", 3) == 0 && !is_alnum(p[3])) {
-            cur = new_token(TK_FOR, cur, p, 3);
-            p += 3;
-            continue;
-        }
-
-        if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3])) {
-            cur = new_token(TK_INT, cur, p, 3);
-            p += 3;
-            continue;
-        }
-
-        if (strncmp(p, "char", 4) == 0 && !is_alnum(p[4])) {
-            cur = new_token(TK_CHAR, cur, p, 4);
-            p += 4;
-            continue;
-        }
-
-        if (strncmp(p, "sizeof", 6) == 0 && !is_alnum(p[6])) {
-            cur = new_token(TK_SIZEOF, cur, p, 6);
-            p += 6;
-            continue;
-        }
-
+        // read identifier
         if (isalpha(*p) || *p == '_') {
             int len = 1;
             while (is_alnum(p[len])) {
@@ -132,19 +127,7 @@ void tokenize() {
             continue;
         }
 
-        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") ||
-            startswith(p, ">=")) {
-            cur = new_token(TK_RESERVED, cur, p, 2);
-            p += 2;
-            continue;
-        }
-
-        if (strchr("+-*/()<>=;{},&[]", *p)) {
-            cur = new_token(TK_RESERVED, cur, p, 1);
-            p++;
-            continue;
-        }
-
+        // read number
         if (isdigit(*p)) {
             char *tmp = p;
             int val = strtol(p, &p, 10);
@@ -152,7 +135,8 @@ void tokenize() {
             cur->val = val;
             continue;
         }
-        error_at(p, "トークナイズできません");
+
+        error_at(p, "Failed to tokenize user input");
     }
 
     new_token(TK_EOF, cur, p, 0);

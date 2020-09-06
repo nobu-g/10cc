@@ -1,6 +1,10 @@
 #include "10cc.h"
 
 Node *walk(Node *node) {
+
+    switch (node->kind) {
+
+    }
     return node;
 }
 

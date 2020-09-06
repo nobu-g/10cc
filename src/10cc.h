@@ -14,9 +14,10 @@
 // 6: NONE
 #define DEBUG 6
 
-typedef struct LVar LVar;
-typedef struct Func Func;
 
+/*
+ * container.c
+ */
 typedef struct {
     void **data;
     int capacity;
@@ -37,19 +38,12 @@ Map *create_map();
 void add_elem_to_map(Map *map, char *key, void *val);
 void *get_elem_from_map(Map *map, char *key);
 
+
 typedef enum {
-    TK_RESERVED, // 記号
-    TK_IDENT,    // 識別子
-    TK_NUM,      // 整数トークン
-    TK_RETURN,   // return
-    TK_IF,       // if
-    TK_ELSE,     // else
-    TK_WHILE,    // while
-    TK_FOR,      // for
-    TK_EOF,      // ファイルの終わりを表すトークン
-    TK_INT,      // int
-    TK_CHAR,     // char
-    TK_SIZEOF,   // sizeof
+    TK_RESERVED,  // operators and reserved words
+    TK_IDENT,     // identifier
+    TK_NUM,       // number
+    TK_EOF,       // end of file
 } TokenKind;
 
 typedef struct Token Token;
@@ -62,23 +56,22 @@ struct Token {
     char *loc;
 };
 
+typedef struct Type Type;
+
 struct Type {
-    enum { INT, CHAR, PTR, ARRAY } ty; // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
+    enum { INT, CHAR, PTR, ARRAY } ty;  // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
     int size;  // INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
     int array_size;  // 配列の要素数
 };
 
-typedef struct Type Type;
-
-// 関数の型
-struct Func {
-    char *name;     // 関数の名前
-    Map *lvars;     // ローカル変数(args含む) (Map<char *, Node *>)
-    Vector *args;   // 引数 (Vector<Node *>)
-    Vector *body;   // 実装 (Vector<Node *>)
-    Type *ret_type; // 戻り値の型
-};
+typedef struct {
+    char *name;      // 関数の名前
+    Map *lvars;      // ローカル変数(args含む) (Map<char *, Node *>)
+    Vector *args;    // 引数 (Vector<Node *>)
+    Vector *body;    // 実装 (Vector<Node *>)
+    Type *ret_type;  // 戻り値の型
+} Func;
 
 typedef struct {
     Map *fns;
@@ -140,6 +133,10 @@ struct Node {
     int offset;  // used only if kind=ND_LVAR
 };
 
+
+/*
+ * tokenize.c
+ */
 extern char *user_input;
 extern Token *token;
 
@@ -147,9 +144,12 @@ void tokenize();
 
 Token *consume(TokenKind kind, char *str);
 Token *peek(TokenKind kind, char *str);
-void expect(char *op);
-int expect_number();
+Token *expect(TokenKind kind, char *str);
 
+
+/*
+ * parse.c
+ */
 Program *parse();
 void func();
 Node *stmt();
@@ -163,13 +163,24 @@ Node *unary();
 Node *primary();
 int get_offset(Map *lvars);
 
+
+/*
+ * sema.c
+ */
 void sema(Program *prog);
 
+
+/*
+ * codegen.c
+ */
 void gen_x86(Program *prog);
 
+
+/*
+ * utils.c
+ */
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
-bool startswith(char *p, char *q);
 bool is_alnum(char c);
 void draw_node_tree(Node *node, int depth, char *prefix);
 void draw_ast();

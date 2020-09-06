@@ -13,17 +13,14 @@ Node *new_node_func_call(char *name, Vector *args, Type *type);
 void error_at(char *loc, char *fmt, ...);
 
 bool at_eof();
-Node *ary_to_ptr(Node *node);
-
 Type *new_ty(int ty, int size);
 Type *int_ty();
 Type *char_ty();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
+Node *ary_to_ptr(Node *node);
 
 Type *read_type();
-Token *read_ident();
-
 Node *declaration();
 
 
@@ -43,12 +40,9 @@ Program *parse() {
 void top_level() {
     while (!at_eof()) {
         Type *type = read_type();
-        if (!type) {
-            error_at(token->loc, "有効な型ではありません");
-        }
-        Token *tok = read_ident();
+        Token *tok = consume(TK_IDENT, NULL);
         if (!tok) {
-            error_at(token->loc, "有効な識別子ではありません");
+            error_at(token->loc, "Invalid identifier");
         }
         if (consume(TK_RESERVED, "(")) {
             // 関数
@@ -59,12 +53,12 @@ void top_level() {
                 error("グローバル変数 %s はすでに宣言されています", tok->str);
             }
             if (consume(TK_RESERVED, "[")) {
-                type = ary_of(type, expect_number());
-                expect("]");
+                type = ary_of(type, expect(TK_NUM, NULL)->val);
+                expect(TK_RESERVED, "]");
             }
             Node *node = new_node_gvar(type, tok->str);
             add_elem_to_map(prog->gvars, tok->str, node);
-            expect(";");
+            expect(TK_RESERVED, ";");
         }
     }
 }
@@ -80,12 +74,12 @@ void func(char *name, Type *ret_type) {
     f->ret_type = ret_type;
     while (!consume(TK_RESERVED, ")")) {
         if (f->args->len > 0) {
-            expect(",");
+            expect(TK_RESERVED, ",");
         }
         push(f->args, declaration());
     }
     add_elem_to_map(prog->fns, f->name, f);
-    expect("{");
+    expect(TK_RESERVED, "{");
     f->body = create_vector();
     while (!consume(TK_RESERVED, "}")) {
         push(f->body, stmt());
@@ -111,48 +105,48 @@ Node *stmt() {
             push(node->stmts, (void *)stmt());
         }
         return node;
-    } else if (consume(TK_RETURN, NULL)) {
+    } else if (consume(TK_RESERVED, "return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();
-    } else if (consume(TK_IF, NULL)) {
+    } else if (consume(TK_RESERVED, "if")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF;
-        expect("(");
+        expect(TK_RESERVED, "(");
         node->cond = expr();
-        expect(")");
+        expect(TK_RESERVED, ")");
         node->then = stmt();
-        if (consume(TK_ELSE, NULL)) {
+        if (consume(TK_RESERVED, "else")) {
             node->els = stmt();
         }
         return node;
-    } else if (consume(TK_WHILE, NULL)) {
+    } else if (consume(TK_RESERVED, "while")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
-        expect("(");
+        expect(TK_RESERVED, "(");
         node->cond = expr();
-        expect(")");
+        expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
-    } else if (consume(TK_FOR, NULL)) {
+    } else if (consume(TK_RESERVED, "for")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR;
-        expect("(");
+        expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr();
-            expect(";");
+            expect(TK_RESERVED, ";");
         }
         if (!consume(TK_RESERVED, ";")) {
             node->cond = expr();
-            expect(";");
+            expect(TK_RESERVED, ";");
         }
         if (!consume(TK_RESERVED, ";")) {
             node->upd = expr();
         }
-        expect(")");
+        expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
-    } else if (peek(TK_INT, NULL) || peek(TK_CHAR, NULL)) {
+    } else if (peek(TK_RESERVED, "int") || peek(TK_RESERVED, "char")) {
         node = declaration();
     } else {
         node = expr();
@@ -270,7 +264,7 @@ Node *unary() {
         return new_node(ND_ADDR, unary(), NULL);
     } else if (consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, unary(), NULL);
-    } else if (consume(TK_SIZEOF, NULL)) {
+    } else if (consume(TK_RESERVED, "sizeof")) {
         return new_node_num(unary()->ty->size);
     } else {
         return primary();
@@ -283,11 +277,10 @@ Node *unary() {
  *         | "(" expr ")"     // 括弧
  */
 Node *primary() {
-    // 変数参照 or 関数呼び出し
-    Token *tok = read_ident();
+    Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
-        // 関数呼び出し
         if (consume(TK_RESERVED, "(")) {
+            // function call
             Vector *args = create_vector();
             for (;;) {
                 if (consume(TK_RESERVED, ")")) {
@@ -298,8 +291,8 @@ Node *primary() {
             }
             Func *f_called = get_elem_from_map(prog->fns, tok->str);
             return new_node_func_call(tok->str, args, f_called->ret_type);
-            // 変数参照
         } else if (consume(TK_RESERVED, "[")) {
+            // variable reference
             Node *lhs = get_elem_from_map(f->lvars, tok->str);
             if (!lhs) {
                 lhs = get_elem_from_map(prog->gvars, tok->str);
@@ -308,7 +301,7 @@ Node *primary() {
                 }
             }
             Node *rhs = new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
-            expect("]");
+            expect(TK_RESERVED, "]");
             Node *sum = new_node(ND_ADD, lhs, rhs);
             return new_node(ND_DEREF, sum, NULL);
         } else {
@@ -325,14 +318,14 @@ Node *primary() {
     }
     if (consume(TK_RESERVED, "(")) {
         Node *node = expr();
-        expect(")");
+        expect(TK_RESERVED, ")");
         return node;
     }
 
-    Node *node = new_node_num(expect_number());
+    Node *node = new_node_num(expect(TK_NUM, NULL)->val);
     if (consume(TK_RESERVED, "[")) {
         Node *lhs, *rhs;
-        tok = read_ident();
+        tok = consume(TK_IDENT, NULL);
         if (tok) {
             lhs = get_elem_from_map(f->lvars, tok->str);
             if (!lhs) {
@@ -344,10 +337,10 @@ Node *primary() {
                 rhs = node; // deref で死ぬ†運命[さだめ]†
             }
         } else {
-            lhs = new_node_num(expect_number());
+            lhs = new_node_num(expect(TK_NUM, NULL)->val);
             rhs = node; // deref で死ぬ†運命[さだめ]†
         }
-        expect("]");
+        expect(TK_RESERVED, "]");
         Node *sum = new_node(ND_ADD, lhs, rhs);
         return new_node(ND_DEREF, sum, NULL);
     }
@@ -442,8 +435,7 @@ Node *new_node_num(int val) {
 bool at_eof() { return token->kind == TK_EOF; }
 
 /**
- * lvars を参照してこれまで確保されたスタック領域の和を計算し，
- * type 型の新たな変数を格納できるだけの offset を返す
+ * lvars を参照してこれまで確保されたスタック領域の総和を計算
  */
 int get_offset(Map *lvars) {
     int offset = 0;
@@ -452,23 +444,6 @@ int get_offset(Map *lvars) {
         offset += node->ty->size;
     }
     return offset;
-}
-
-/**
- * base: ARRAY を表すノード
- */
-Node *ary_to_ptr(Node *base) {
-    if (base->ty->ty != ARRAY) {
-        error("配列ではありません");
-    }
-
-    // &(base[0])
-    Node *addr = calloc(1, sizeof(Node));
-    addr->kind = ND_ADDR;
-    addr->lhs = base;
-    addr->ty = ptr_to(base->ty->ptr_to);
-
-    return addr;
 }
 
 Type *new_ty(int ty, int size) {
@@ -495,15 +470,29 @@ Type *ary_of(Type *base, int size) {
     return ty;
 }
 
-// 型を読み込んでそれを返す．読み込めなかったら NULL を返す．
+Node *ary_to_ptr(Node *base) {
+    if (base->ty->ty != ARRAY) {
+        error("配列ではありません");
+    }
+
+    // &(base[0])
+    Node *addr = calloc(1, sizeof(Node));
+    addr->kind = ND_ADDR;
+    addr->lhs = base;
+    addr->ty = ptr_to(base->ty->ptr_to);
+
+    return addr;
+}
+
+// 型を読み込んでそれを返す
 Type *read_type() {
     Type *ty;
-    if (consume(TK_INT, NULL)) {
+    if (consume(TK_RESERVED, "int")) {
         ty = int_ty();
-    } else if (consume(TK_CHAR, NULL)) {
+    } else if (consume(TK_RESERVED, "char")) {
         ty = char_ty();
     } else {
-        return NULL;
+        error_at(token->loc, "Invalid type");
     }
     while (consume(TK_RESERVED, "*")) {
         ty = ptr_to(ty);
@@ -511,27 +500,25 @@ Type *read_type() {
     return ty;
 }
 
-// 識別子を読み込んでそれを返す．読み込めなかったら NULL を返す．
-Token *read_ident() { return consume(TK_IDENT, NULL); }
-
-
 /*
  * declaration = T ident ("[" num? "]")?
  */
 Node *declaration() {
     Type *type = read_type();
-    Token *tok = read_ident();
-    if (!tok) {
-        error_at(token->loc, "Invalid identifier");
-    }
-    if (get_elem_from_map(f->lvars, tok->str)) {
-        error("Redefinition of '%s'", tok->str);
+    Token *tok_ident = expect(TK_IDENT, NULL);
+    if (get_elem_from_map(f->lvars, tok_ident->str)) {
+        error("Redefinition of '%s'", tok_ident->str);
     }
     if (consume(TK_RESERVED, "[")) {
-        type = ary_of(type, expect_number());
-        expect("]");
+        Token *token = consume(TK_NUM, NULL);
+        if (token) {
+            type = ary_of(type, token->val);
+        } else {
+            type = ary_of(type, 0);  // tentatively, array length is 0
+        }
+        expect(TK_RESERVED, "]");
     }
     Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
-    add_elem_to_map(f->lvars, tok->str, node);
+    add_elem_to_map(f->lvars, tok_ident->str, node);
     return node;
 }
