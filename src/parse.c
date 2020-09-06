@@ -1,7 +1,7 @@
 #include "10cc.h"
 
-Program *prog; // The program
-Func *f;       // The function being parsed
+Program *prog;  // The program
+Func *f;        // The function being parsed
 
 void top_level();
 void func();
@@ -343,11 +343,11 @@ Node *primary() {
             if (lhs->ty->ty == ARRAY || lhs->ty->ty == PTR) {
                 rhs = new_node(ND_MUL, node, new_node_num(lhs->ty->ptr_to->size));
             } else {
-                rhs = node; // deref で死ぬ†運命[さだめ]†
+                rhs = node;  // deref で死ぬ†運命[さだめ]†
             }
         } else {
             lhs = new_node_num(expect(TK_NUM, NULL)->val);
-            rhs = node; // deref で死ぬ†運命[さだめ]†
+            rhs = node;  // deref で死ぬ†運命[さだめ]†
         }
         expect(TK_RESERVED, "]");
         Node *sum = new_node(ND_ADD, lhs, rhs);
@@ -523,7 +523,7 @@ Node *declaration() {
         if (token) {
             type = ary_of(type, token->val);
         } else {
-            type = ary_of(type, 0); // tentatively, array length is 0
+            type = ary_of(type, 0);  // tentatively, array length is 0
         }
         expect(TK_RESERVED, "]");
     }

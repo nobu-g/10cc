@@ -39,10 +39,18 @@ Token *expect(TokenKind kind, char *str) {
         } else {
             char *kind_name;
             switch (kind) {
-            case TK_RESERVED: kind_name = "reserved token"; break;
-            case TK_IDENT:    kind_name = "identifier"; break;
-            case TK_NUM:      kind_name = "number"; break;
-            case TK_EOF:      kind_name = "EOF"; break;
+            case TK_RESERVED:
+                kind_name = "reserved token";
+                break;
+            case TK_IDENT:
+                kind_name = "identifier";
+                break;
+            case TK_NUM:
+                kind_name = "number";
+                break;
+            case TK_EOF:
+                kind_name = "EOF";
+                break;
             }
             error_at(token->loc, "%s expected", kind_name);
         }
