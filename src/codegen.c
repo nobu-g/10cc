@@ -74,13 +74,17 @@ void gen(Node *node) {
         return;
     case ND_GVAR:
         gen_gval(node);
-        printf("  pop rax\n");         // local variable のアドレスをraxにpop
+        printf("  pop rax\n");         // global variable のアドレスをraxにpop
+        // TODO: global variable の型によってmovsxなどを使う
+        // mov al, [rax] などとすると rax の上位ビットがリセットされない
+        // 最低でも第一引数には eax サイズが必要で，そのサイズに 1byte を格納するためには符号拡張が必要
         printf("  mov rax, [rax]\n");  // raxの指す先にアクセスして中身をraxにコピー
         printf("  push rax\n");        // コピーしてきた値をスタックにpush
         return;
     case ND_LVAR:  // node にアクセスして中身をスタックに push
         gen_lval(node);
         printf("  pop rax\n");                           // local variable のアドレスをraxにpop
+        // movsx を使う
         printf("  mov %s, [rax]\n", node_to_reg(node));  // raxの指す先にアクセスして中身をraxにコピー
         printf("  push %s\n", regs[0]);                  // コピーしてきた値をスタックにpush
         return;
@@ -110,8 +114,8 @@ void gen(Node *node) {
     case ND_IF:
         cur_label_cnt = label_cnt++;
         gen(node->cond);
-        printf("  pop %s\n", regs[0]);
-        printf("  cmp %s, 0\n", regs[0]);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
         if (node->els) {
             printf("  je .Lelse%03d\n", cur_label_cnt);
             gen(node->then);
@@ -128,8 +132,8 @@ void gen(Node *node) {
         cur_label_cnt = label_cnt++;
         printf(".Lbegin%03d:\n", cur_label_cnt);
         gen(node->cond);
-        printf("  pop %s\n", regs[0]);
-        printf("  cmp %s, 0\n", regs[0]);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
         printf("  je .Lend%03d\n", cur_label_cnt);
         gen(node->then);
         printf("  jmp .Lbegin%03d\n", cur_label_cnt);
@@ -140,8 +144,8 @@ void gen(Node *node) {
         cur_label_cnt = label_cnt++;
         printf(".Lbegin%03d:\n", cur_label_cnt);
         gen(node->cond);
-        printf("  pop %s\n", regs[0]);
-        printf("  cmp %s, 0\n", regs[0]);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
         printf("  je .Lend%03d\n", cur_label_cnt);
         gen(node->then);
         gen(node->upd);
@@ -160,14 +164,15 @@ void gen(Node *node) {
         } else if (node->lhs->kind == ND_GVAR) {
             gen_gval(node->lhs);
         } else {
-            error("アドレスを参照できません");
+            error("unable to get address");
         }
         return;
     case ND_DEREF:       // 右辺値参照
         gen(node->lhs);  // アドレスがスタックに積まれる
-        printf("  pop %s\n", "rax");
-        printf("  mov %s, [%s]\n", node_to_reg(node->lhs), "rax");
-        printf("  push %s\n", regs[0]);
+        printf("  pop rax\n");
+        // TODO: movsx を使う
+        printf("  mov %s, [rax]\n", node_to_reg(node->lhs));
+        printf("  push %s\n", node_to_reg(node->lhs));
         return;
     }
 
