@@ -243,16 +243,16 @@ void gen_func(Func *f) {
     }
 }
 
-void gen_x86() {
+void gen_x86(Program *prog) {
     printf(".intel_syntax noprefix\n");
 
     printf(".data\n");
-    for (int i = 0; i < gvars->len; i++) {
-        gen_gvar(gvars->vals->data[i]);
+    for (int i = 0; i < prog->gvars->len; i++) {
+        gen_gvar(prog->gvars->vals->data[i]);
     }
     printf("\n");
     printf(".text\n");
-    for (int i = 0; i < funcs->len; i++) {
-        gen_func(funcs->vals->data[i]);
+    for (int i = 0; i < prog->fns->len; i++) {
+        gen_func(prog->fns->vals->data[i]);
     }
 }

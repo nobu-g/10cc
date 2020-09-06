@@ -10,10 +10,11 @@ int main(int argc, char **argv) {
     // the parse result is stored in "code"
     user_input = argv[1];
     tokenize();
-    program();
+    Program *prog = parse();
 #if DEBUG <= 2
-    draw_ast();
+    draw_ast(prog);
 #endif
-    gen_x86();
+    sema(prog);
+    gen_x86(prog);
     return 0;
 }

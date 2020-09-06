@@ -18,6 +18,10 @@ void push(Vector *vec, void *elem) {
     vec->data[vec->len++] = elem;
 }
 
+void *get_elem_from_vec(Vector *vec, int index) {
+    return vec->data[index];
+}
+
 Map *create_map() {
     Map *map = malloc(sizeof(Map));
     map->keys = create_vector();

@@ -25,6 +25,7 @@ typedef struct {
 
 Vector *create_vector();
 void push(Vector *vec, void *elem);
+void *get_elem_from_vec(Vector *vec, int index);
 
 typedef struct {
     Vector *keys;
@@ -78,6 +79,12 @@ struct Func {
     Vector *body;   // 実装 (Vector<Node *>)
     Type *ret_type; // 戻り値の型
 };
+
+typedef struct {
+    Map *fns;
+    Map *gvars;
+} Program;
+
 
 typedef enum {
     ND_ADD,       // +
@@ -134,8 +141,6 @@ struct Node {
 };
 
 extern char *user_input;
-extern Map *funcs;
-extern Map *gvars;
 extern Token *token;
 
 void tokenize();
@@ -144,7 +149,7 @@ Token *consume(TokenKind kind, char *str);
 void expect(char *op);
 int expect_number();
 
-void program();
+Program *parse();
 void func();
 Node *stmt();
 Node *expr();
@@ -157,7 +162,9 @@ Node *unary();
 Node *primary();
 int get_offset(Map *lvars);
 
-void gen_x86();
+void sema(Program *prog);
+
+void gen_x86(Program *prog);
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);

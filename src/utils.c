@@ -141,9 +141,9 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
     }
 }
 
-void draw_ast() {
-    for (int i = 0; i < funcs->len; i++) {
-        Func *f = funcs->vals->data[i];
+void draw_ast(Program *prog) {
+    for (int i = 0; i < prog->fns->len; i++) {
+        Func *f = prog->fns->vals->data[i];
         fprintf(stderr, "%s(\n", f->name);
         for (int j = 0; j < f->args->len; j++) {
             char prefix[256] = {'\0'};
