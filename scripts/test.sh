@@ -15,10 +15,10 @@ assert() {
   actual="$?"
 
   if [[ "$actual" = "$expected" ]]; then
-    echo -e "\033[32m[PASSED]\033[m $input => $actual"
+    echo -e "\e[32m[PASSED]\e[m $input \e[33m=> \e[36m$actual\e[m"
     return 0
   else
-    echo -e "\033[31m[FAILED]\033[m $input => $expected expected, but got $actual"
+    echo -e "\e[31m[FAILED]\e[m $input \e[33m=> \e[36m$expected\e[m expected, but got \e[36m$actual\e[m"
     return 1
   fi
 }
