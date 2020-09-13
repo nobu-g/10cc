@@ -4,36 +4,36 @@ char *regs[] = {"r10", "r11", "rbx", "r12", "r13", "r14", "r15"};
 char *regs8[] = {"r10b", "r11b", "bl", "r12b", "r13b", "r14b", "r15b"};
 char *regs32[] = {"r10d", "r11d", "ebx", "r12d", "r13d", "r14d", "r15d"};
 
-int num_regs = sizeof(regs) / sizeof(*regs);
-
 char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 char *argregs8[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 
 int label_cnt = 0;
 
-// 一時的に常に0番目のレジスタを返す
-char *node_to_reg(Node *node) {
-    switch (node->ty->ty) {
-    case PTR:
-    case ARRAY:
-        return regs[0];
-    case INT:
-        return regs32[0];
-    case CHAR:
-        return regs8[0];
+char *reg(int size) {
+    int r = 0;  // return 0th register tentatively
+    switch (size) {
+    case 1:
+        return regs8[r];
+    case 4:
+        return regs32[r];
+    case 8:
+        return regs[r];
+    default:
+        error("Invalid register size: %d", size);
     }
 }
 
-char *node_to_argreg(Node *node, int i) {
-    switch (node->ty->ty) {
-    case PTR:
-    case ARRAY:
-        return argregs[i];
-    case INT:
-        return argregs32[i];
-    case CHAR:
-        return argregs8[i];
+char *argreg(int r, int size) {
+    switch (size) {
+    case 1:
+        return argregs8[r];
+    case 4:
+        return argregs32[r];
+    case 8:
+        return argregs[r];
+    default:
+        error("Invalid arg register size: %d", size);
     }
 }
 
@@ -67,26 +67,31 @@ void gen(Node *node) {
             gen(node->args->data[i]);
         }
         for (int i = node->args->len - 1; 0 <= i; i--) {
-            printf("  pop %s\n", argregs[i]);
+            printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
         }
         printf("  call %s\n", node->name);
         printf("  push rax\n");
         return;
     case ND_GVAR:
         gen_gval(node);
-        printf("  pop rax\n");         // global variable のアドレスをraxにpop
+        printf("  pop rax\n");  // global variable のアドレスをraxにpop
         // TODO: global variable の型によってmovsxなどを使う
         // mov al, [rax] などとすると rax の上位ビットがリセットされない
         // 最低でも第一引数には eax サイズが必要で，そのサイズに 1byte を格納するためには符号拡張が必要
-        printf("  mov rax, [rax]\n");  // raxの指す先にアクセスして中身をraxにコピー
-        printf("  push rax\n");        // コピーしてきた値をスタックにpush
+        printf("  mov %s, [rax]\n", reg(node->ty->size));  // raxの指す先にアクセスして中身をraxにコピー
+        if (node->ty->size == 1) {
+            printf("  movsx %s, %s\n", reg(8), reg(1));
+        }
+        printf("  push %s\n", reg(8));  // コピーしてきた値をスタックにpush
         return;
-    case ND_LVAR:  // node にアクセスして中身をスタックに push
+    case ND_LVAR:
         gen_lval(node);
-        printf("  pop rax\n");                           // local variable のアドレスをraxにpop
-        // movsx を使う
-        printf("  mov %s, [rax]\n", node_to_reg(node));  // raxの指す先にアクセスして中身をraxにコピー
-        printf("  push %s\n", regs[0]);                  // コピーしてきた値をスタックにpush
+        printf("  pop rax\n");                             // local variable のアドレスをraxにpop
+        printf("  mov %s, [rax]\n", reg(node->ty->size));  // raxの指す先にアクセスして中身をraxにコピー
+        if (node->ty->size == 1) {
+            printf("  movsx %s, %s\n", reg(8), reg(1));
+        }
+        printf("  push %s\n", reg(8));  // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
         if (node->lhs->kind == ND_DEREF) {
@@ -99,10 +104,10 @@ void gen(Node *node) {
             error("有効な左辺値ではありません．");
         }
         gen(node->rhs);
-        printf("  pop %s\n", regs[0]);                        // 右辺値
-        printf("  pop rax\n");                                // 左辺値(アドレス)
-        printf("  mov [rax], %s\n", node_to_reg(node->rhs));  // rdiの値をraxが指すメモリにコピー
-        printf("  push %s\n", regs[0]);                       // 代入演算の結果を書き戻す
+        printf("  pop %s\n", reg(8));                           // 右辺値
+        printf("  pop rax\n");                                  // 左辺値(アドレス)
+        printf("  mov [rax], %s\n", reg(node->rhs->ty->size));  // rdiの値をraxが指すメモリにコピー
+        printf("  push %s\n", reg(8));                          // 代入演算の結果を書き戻す
         return;
     case ND_RETURN:
         gen(node->lhs);
@@ -155,7 +160,7 @@ void gen(Node *node) {
     case ND_BLOCK:
         for (int i = 0; i < node->stmts->len; i++) {
             gen(node->stmts->data[i]);
-            printf("  pop %s\n", regs[0]);
+            printf("  pop %s\n", reg(8));
         }
         return;
     case ND_ADDR:
@@ -164,15 +169,17 @@ void gen(Node *node) {
         } else if (node->lhs->kind == ND_GVAR) {
             gen_gval(node->lhs);
         } else {
-            error("unable to get address");
+            error("Unable to get address");
         }
         return;
     case ND_DEREF:       // 右辺値参照
         gen(node->lhs);  // アドレスがスタックに積まれる
         printf("  pop rax\n");
-        // TODO: movsx を使う
-        printf("  mov %s, [rax]\n", node_to_reg(node->lhs));
-        printf("  push %s\n", node_to_reg(node->lhs));
+        printf("  mov %s, [rax]\n", reg(node->ty->size));
+        if (node->ty->size == 1) {
+            printf("  movsx %s, %s\n", reg(8), reg(1));
+        }
+        printf("  push %s\n", reg(8));
         return;
     }
 
@@ -238,8 +245,7 @@ void gen_func(Func *f) {
     for (int i = 0; i < f->args->len; i++) {
         Node *arg = f->args->data[i];  // ND_LVAR
         printf("  lea rax, [rbp-%d]\n", arg->offset);
-        char *argreg = node_to_argreg(arg, i);
-        printf("  mov [rax], %s\n", argreg);  // 第 i 引数の値をraxが指すメモリにコピー
+        printf("  mov [rax], %s\n", argreg(i, arg->ty->size));  // 第 i 引数の値をraxが指すメモリにコピー
     }
 
     // 中身のコードを吐く
