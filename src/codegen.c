@@ -246,6 +246,11 @@ void gen_func(Func *f) {
     for (int i = 0; i < f->body->len; i++) {
         gen(f->body->data[i]);
     }
+
+    // epilogue (when fuction ends without return stmt)
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
 }
 
 void gen_x86(Program *prog) {
