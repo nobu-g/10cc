@@ -77,9 +77,6 @@ void gen(Node *node) {
     case ND_GVAR:
         gen_gval(node);
         printf("  pop rax\n");  // global variable のアドレスをraxにpop
-        // TODO: global variable の型によってmovsxなどを使う
-        // mov al, [rax] などとすると rax の上位ビットがリセットされない
-        // 最低でも第一引数には eax サイズが必要で，そのサイズに 1byte を格納するためには符号拡張が必要
         printf("  mov %s, [rax]\n", reg(node->ty->size));  // raxの指す先にアクセスして中身をraxにコピー
         if (node->ty->size == 1) {
             printf("  movsx %s, %s\n", reg(8), reg(1));
@@ -108,7 +105,7 @@ void gen(Node *node) {
         gen(node->rhs);
         printf("  pop %s\n", reg(8));                           // 右辺値
         printf("  pop rax\n");                                  // 左辺値(アドレス)
-        printf("  mov [rax], %s\n", reg(node->rhs->ty->size));  // rdiの値をraxが指すメモリにコピー
+        printf("  mov [rax], %s\n", reg(node->lhs->ty->size));  // rdiの値をraxが指すメモリにコピー
         printf("  push %s\n", reg(8));                          // 代入演算の結果を書き戻す
         return;
     case ND_RETURN:
