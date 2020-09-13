@@ -1,7 +1,7 @@
 #include "10cc.h"
 
 Program *prog;               // The program
-Func *f;                     // The function being parsed
+Func *fn;                    // The function being parsed
 Node null_stmt = {ND_NULL};  // NOP node
 
 void top_level();
@@ -74,22 +74,22 @@ void func(char *name, Type *ret_type) {
     /**
      * "int f(int a, int b) {}" の "(" まで読み終えた
      */
-    f = calloc(1, sizeof(Func));
-    f->name = name;
-    f->lvars = map_create();
-    f->args = vec_create();
-    f->ret_type = ret_type;
+    fn = calloc(1, sizeof(Func));
+    fn->name = name;
+    fn->lvars = map_create();
+    fn->args = vec_create();
+    fn->ret_type = ret_type;
     while (!consume(TK_RESERVED, ")")) {
-        if (f->args->len > 0) {
+        if (fn->args->len > 0) {
             expect(TK_RESERVED, ",");
         }
-        vec_push(f->args, declaration());
+        vec_push(fn->args, declaration());
     }
-    map_insert(prog->fns, f->name, f);
+    map_insert(prog->fns, fn->name, fn);
     expect(TK_RESERVED, "{");
-    f->body = vec_create();
+    fn->body = vec_create();
     while (!consume(TK_RESERVED, "}")) {
-        vec_push(f->body, stmt());
+        vec_push(fn->body, stmt());
     }
 }
 
@@ -173,7 +173,7 @@ Node *stmt() {
 Node *declaration() {
     Type *type = read_type();
     Token *tok_ident = expect(TK_IDENT, NULL);
-    if (map_at(f->lvars, tok_ident->str)) {
+    if (map_at(fn->lvars, tok_ident->str)) {
         error("Redefinition of '%s'", tok_ident->str);
     }
     if (consume(TK_RESERVED, "[")) {
@@ -185,8 +185,8 @@ Node *declaration() {
         }
         expect(TK_RESERVED, "]");
     }
-    Node *node = new_node_lvar(type, get_offset(f->lvars) + type->size);
-    map_insert(f->lvars, tok_ident->str, node);
+    Node *node = new_node_lvar(type, get_offset(fn->lvars) + type->size);
+    map_insert(fn->lvars, tok_ident->str, node);
     return node;
 }
 
@@ -332,7 +332,7 @@ Node *primary() {
             return new_node_func_call(tok, args);
         } else if (consume(TK_RESERVED, "[")) {
             // variable reference (subscript access)
-            Node *lhs = map_at(f->lvars, tok->str);
+            Node *lhs = map_at(fn->lvars, tok->str);
             if (!lhs) {
                 lhs = map_at(prog->gvars, tok->str);
                 if (!lhs) {
@@ -345,7 +345,7 @@ Node *primary() {
             return new_node(ND_DEREF, sum, NULL);
         } else {
             // variable reference
-            Node *lvar = map_at(f->lvars, tok->str);
+            Node *lvar = map_at(fn->lvars, tok->str);
             if (!lvar) {
                 Node *gvar = map_at(prog->gvars, tok->str);
                 if (!gvar) {
@@ -363,7 +363,7 @@ Node *primary() {
         Node *lhs, *rhs;
         tok = consume(TK_IDENT, NULL);
         if (tok) {
-            lhs = map_at(f->lvars, tok->str);
+            lhs = map_at(fn->lvars, tok->str);
             if (!lhs) {
                 error("undefined variable: '%s'", tok->str);
             }

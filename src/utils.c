@@ -101,7 +101,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
         case ND_BLOCK:
             fprintf(stderr, "BLOCK\n");
             for (int i = 0; i < node->stmts->len; i++) {
-                draw_node_tree(node->stmts->data[i], depth + 1, "");
+                draw_node_tree(vec_get(node->stmts, i), depth + 1, "");
             }
             break;
         case ND_FUNC_CALL:
@@ -109,7 +109,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             for (int i = 0; i < node->args->len; i++) {
                 char prefix[16] = {'\0'};
                 sprintf(prefix, "arg%d", i);
-                draw_node_tree(node->args->data[i], depth + 1, prefix);
+                draw_node_tree(vec_get(node->args, i), depth + 1, prefix);
             }
             break;
         case ND_LVAR:
@@ -137,16 +137,16 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
 
 void draw_ast(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
-        Func *f = vec_get(prog->fns->vals, i);
-        fprintf(stderr, "%s(\n", f->name);
-        for (int j = 0; j < f->args->len; j++) {
+        Func *fn = vec_get(prog->fns->vals, i);
+        fprintf(stderr, "%s(\n", fn->name);
+        for (int j = 0; j < fn->args->len; j++) {
             char prefix[256] = {'\0'};
             sprintf(prefix, "arg%d", j);
-            draw_node_tree(f->args->data[j], 1, prefix);
+            draw_node_tree(vec_get(fn->args, j), 1, prefix);
         }
         fprintf(stderr, ")\n");
-        for (int j = 0; j < f->body->len; j++) {
-            draw_node_tree(f->body->data[j], 1, "");
+        for (int j = 0; j < fn->body->len; j++) {
+            draw_node_tree(vec_get(fn->body, j), 1, "");
         }
         fprintf(stderr, "\n");
     }

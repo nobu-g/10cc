@@ -63,7 +63,7 @@ void gen(Node *node) {
         return;
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
-            gen(node->args->data[i]);
+            gen(vec_get(node->args, i));
         }
         for (int i = node->args->len - 1; 0 <= i; i--) {
             printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
@@ -143,7 +143,7 @@ void gen(Node *node) {
         return;
     case ND_BLOCK:
         for (int i = 0; i < node->stmts->len; i++) {
-            gen(node->stmts->data[i]);
+            gen(vec_get(node->stmts, i));
             printf("  pop %s\n", reg(8));
         }
         return;
@@ -205,30 +205,30 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-void gen_gvar(Node *g) {
-    printf("%s:\n", g->name);
-    printf("  .zero %d\n", g->ty->size);
+void gen_gvar(Node *gvar) {
+    printf("%s:\n", gvar->name);
+    printf("  .zero %d\n", gvar->ty->size);
 }
 
-void gen_func(Func *f) {
-    printf(".global %s\n", f->name);
-    printf("\n%s:\n", f->name);
+void gen_func(Func *fn) {
+    printf(".global %s\n", fn->name);
+    printf("\n%s:\n", fn->name);
 
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", get_offset(f->lvars));  // ローカル変数の領域を確保する
+    printf("  sub rsp, %d\n", get_offset(fn->lvars));  // ローカル変数の領域を確保する
 
     // 引数の値を stack に push してローカル変数と同じように扱えるように
-    for (int i = 0; i < f->args->len; i++) {
-        Node *arg = f->args->data[i];  // ND_LVAR
+    for (int i = 0; i < fn->args->len; i++) {
+        Node *arg = vec_get(fn->args, i);
         printf("  lea rax, [rbp-%d]\n", arg->offset);
         printf("  mov [rax], %s\n", argreg(i, arg->ty->size));  // 第 i 引数の値をraxが指すメモリにコピー
     }
 
     // 中身のコードを吐く
-    for (int i = 0; i < f->body->len; i++) {
-        gen(f->body->data[i]);
+    for (int i = 0; i < fn->body->len; i++) {
+        gen(vec_get(fn->body, i));
     }
 
     // epilogue (when fuction ends without return stmt)
@@ -242,11 +242,11 @@ void gen_x86_64(Program *prog) {
 
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
-        gen_gvar(prog->gvars->vals->data[i]);
+        gen_gvar(vec_get(prog->gvars->vals, i));
     }
     printf("\n");
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
-        gen_func(prog->fns->vals->data[i]);
+        gen_func(vec_get(prog->fns->vals, i));
     }
 }
