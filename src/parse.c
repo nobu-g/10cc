@@ -294,6 +294,7 @@ Node *unary() {
     } else if (consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, unary(), NULL);
     } else if (consume(TK_RESERVED, "sizeof")) {
+        // TODO: accept typename
         return new_node_num(unary()->ty->size);
     } else {
         return primary();
@@ -474,8 +475,8 @@ Node *new_node_num(int val) {
 int get_offset(Map *lvars) {
     int offset = 0;
     for (int i = 0; i < lvars->len; i++) {
-        Node *node = lvars->vals->data[i];
-        offset += node->ty->size;
+        Node *lvar = vec_get(lvars->vals, i);
+        offset += lvar->ty->size;
     }
     return offset;
 }
