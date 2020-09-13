@@ -21,10 +21,6 @@ void error_at(char *loc, char *fmt, ...) {
     exit(1);
 }
 
-bool is_alnum(char c) {
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
-}
-
 void draw_node_tree(Node *node, int depth, char *prefix) {
     if (node != NULL) {
         for (int i = 0; i < depth; i++) {

@@ -3,106 +3,10 @@
 char *user_input;
 Token *token;
 
-Token *consume(TokenKind kind, char *str) {
-    if (token->kind != kind) {
-        return NULL;
-    }
-
-    if (str != NULL) {
-        if (strcmp(token->str, str) != 0) {
-            return NULL;
-        }
-    }
-
-    Token *tok = token;
-    token = token->next;
-    return tok;
-}
-
-Token *peek(TokenKind kind, char *str) {
-    if (token->kind != kind) {
-        return NULL;
-    }
-
-    if (str != NULL) {
-        if (strcmp(token->str, str) != 0) {
-            return NULL;
-        }
-    }
-    return token;
-}
-
-Token *expect(TokenKind kind, char *str) {
-    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
-        if (str) {
-            error_at(token->loc, "'%s' expected", str);
-        } else {
-            char *kind_name;
-            switch (kind) {
-            case TK_RESERVED:
-                kind_name = "reserved token";
-                break;
-            case TK_IDENT:
-                kind_name = "identifier";
-                break;
-            case TK_NUM:
-                kind_name = "number";
-                break;
-            case TK_EOF:
-                kind_name = "EOF";
-                break;
-            }
-            error_at(token->loc, "%s expected", kind_name);
-        }
-    }
-
-    Token *tok = token;
-    token = token->next;
-    return tok;
-}
-
-Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
-    Token *tok = calloc(1, sizeof(Token));
-
-    char *name = calloc(len + 1, sizeof(char));
-    strncpy(name, str, len);
-    name[len] = '\0';
-
-    tok->kind = kind;
-    tok->str = name;
-    tok->loc = str;
-    cur->next = tok;
-    return tok;
-}
-
-bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
-
-char *read_reserved(char *p) {
-    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof"};
-    for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
-        int len = strlen(kws[i]);
-        if (startswith(p, kws[i]) && !is_alnum(p[len])) {
-            return kws[i];
-        }
-    }
-
-    char *multi_ops[] = {"<=", ">=", "==", "!="};
-    for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
-        int len = strlen(multi_ops[i]);
-        if (startswith(p, multi_ops[i])) {
-            return multi_ops[i];
-        }
-    }
-
-    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
-    for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
-        int len = strlen(single_ops[i]);
-        if (startswith(p, single_ops[i])) {
-            return single_ops[i];
-        }
-    }
-    return NULL;
-}
+bool startswith(char *p, char *q);
+bool is_alnum(char c);
+char *read_reserved(char *p);
+Token *new_token(TokenKind kind, Token *cur, char *str, int len);
 
 void tokenize() {
     Token head;
@@ -150,3 +54,103 @@ void tokenize() {
     new_token(TK_EOF, cur, p, 0);
     token = head.next;
 }
+
+char *read_reserved(char *p) {
+    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof"};
+    for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
+        int len = strlen(kws[i]);
+        if (startswith(p, kws[i]) && !is_alnum(p[len])) {
+            return kws[i];
+        }
+    }
+
+    char *multi_ops[] = {"<=", ">=", "==", "!="};
+    for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
+        int len = strlen(multi_ops[i]);
+        if (startswith(p, multi_ops[i])) {
+            return multi_ops[i];
+        }
+    }
+
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
+    for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
+        int len = strlen(single_ops[i]);
+        if (startswith(p, single_ops[i])) {
+            return single_ops[i];
+        }
+    }
+    return NULL;
+}
+
+bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
+
+bool is_alnum(char c) {
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
+}
+
+Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
+    Token *tok = calloc(1, sizeof(Token));
+
+    char *name = calloc(len + 1, sizeof(char));
+    strncpy(name, str, len);
+    name[len] = '\0';
+
+    tok->kind = kind;
+    tok->str = name;
+    tok->loc = str;
+    cur->next = tok;
+    return tok;
+}
+
+// Returns the current token if it satisfies given conditions
+Token *peek(TokenKind kind, char *str) {
+    if (token->kind != kind) {
+        return NULL;
+    }
+
+    if (str != NULL) {
+        if (strcmp(token->str, str) != 0) {
+            return NULL;
+        }
+    }
+    return token;
+}
+
+Token *consume(TokenKind kind, char *str) {
+    Token *ret = peek(kind, str);
+    if (ret) {
+        token = token->next;
+    }
+    return ret;
+}
+
+Token *expect(TokenKind kind, char *str) {
+    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
+        if (str) {
+            error_at(token->loc, "'%s' expected", str);
+        } else {
+            char *kind_name;
+            switch (kind) {
+            case TK_RESERVED:
+                kind_name = "reserved token";
+                break;
+            case TK_IDENT:
+                kind_name = "identifier";
+                break;
+            case TK_NUM:
+                kind_name = "number";
+                break;
+            case TK_EOF:
+                kind_name = "EOF";
+                break;
+            }
+            error_at(token->loc, "%s expected", kind_name);
+        }
+    }
+
+    Token *tok = token;
+    token = token->next;
+    return tok;
+}
+
+bool at_eof() { return peek(TK_EOF, NULL); }

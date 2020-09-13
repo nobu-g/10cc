@@ -6,6 +6,7 @@ Func *f;        // The function being parsed
 void top_level();
 void func();
 Node *stmt();
+Node *declaration();
 Node *expr();
 Node *assign();
 Node *equality();
@@ -19,18 +20,15 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(Type *type, int offset);
 Node *new_node_gvar(Type *type, char *name);
-Node *new_node_func_call(char *name, Vector *args, Type *type);
+Node *new_node_func_call(Token *tok, Vector *args);
 
-bool at_eof();
 Type *new_ty(int ty, int size);
 Type *int_ty();
 Type *char_ty();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
 Node *ary_to_ptr(Node *node);
-
 Type *read_type();
-Node *declaration();
 
 Program *parse() {
     prog = calloc(1, sizeof(Program));
@@ -326,8 +324,7 @@ Node *primary() {
                 }
                 vec_push(args, expr());
             }
-            Func *f_called = map_at(prog->fns, tok->str);
-            return new_node_func_call(tok->str, args, f_called->ret_type);
+            return new_node_func_call(tok, args);
         } else if (consume(TK_RESERVED, "[")) {
             // variable reference (subscript access)
             Node *lhs = map_at(f->lvars, tok->str);
@@ -421,12 +418,17 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     return node;
 }
 
-Node *new_node_func_call(char *name, Vector *args, Type *type) {
+Node *new_node_func_call(Token *tok, Vector *args) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC_CALL;
-    node->name = name;
+    Func *fn = map_at(prog->fns, tok->str);
+    if (!fn) {
+        error_at(tok->loc, "Undefined function: '%s'", tok->str);
+    }
+
+    node->name = tok->str;
     node->args = args;
-    node->ty = type;
+    node->ty = fn->ret_type;
 #if DEBUG <= 1
     fprintf(stderr, "ND_FUNC_CALL\n");
 #endif
@@ -465,8 +467,6 @@ Node *new_node_num(int val) {
 #endif
     return node;
 }
-
-bool at_eof() { return token->kind == TK_EOF; }
 
 /**
  * lvars を参照してこれまで確保されたスタック領域の総和を計算
@@ -518,7 +518,6 @@ Node *ary_to_ptr(Node *base) {
     return addr;
 }
 
-// 型を読み込んでそれを返す
 Type *read_type() {
     Type *ty;
     if (consume(TK_RESERVED, "int")) {

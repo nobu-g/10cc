@@ -137,10 +137,10 @@ extern char *user_input;
 extern Token *token;
 
 void tokenize();
-Token *consume(TokenKind kind, char *str);
 Token *peek(TokenKind kind, char *str);
+Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
-
+bool at_eof();
 /*
  * parse.c
  */
@@ -162,6 +162,5 @@ void gen_x86(Program *prog);
  */
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
-bool is_alnum(char c);
 void draw_node_tree(Node *node, int depth, char *prefix);
 void draw_ast();
