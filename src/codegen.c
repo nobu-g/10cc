@@ -59,6 +59,8 @@ void gen_gval(Node *node) {
 void gen(Node *node) {
     int cur_label_cnt;
     switch (node->kind) {
+    case ND_NULL:
+        return;
     case ND_NUM:
         printf("  push %d\n", node->val);
         return;

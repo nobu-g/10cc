@@ -58,7 +58,7 @@ typedef struct Type Type;
 
 struct Type {
     enum { INT, CHAR, PTR, ARRAY } ty;  // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
-    int size;                           // INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
+    int size;                           // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
     int array_size;  // 配列の要素数
 };
@@ -97,6 +97,7 @@ typedef enum {
     ND_NUM,        // number
     ND_ADDR,       // unary &
     ND_DEREF,      // unary *
+    ND_NULL        // NOP
 } NodeKind;
 
 typedef struct Node Node;

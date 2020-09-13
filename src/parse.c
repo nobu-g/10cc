@@ -1,7 +1,8 @@
 #include "10cc.h"
 
-Program *prog;  // The program
-Func *f;        // The function being parsed
+Program *prog;               // The program
+Func *f;                     // The function being parsed
+Node null_stmt = {ND_NULL};  // NOP node
 
 void top_level();
 void func();
@@ -99,7 +100,7 @@ void func(char *name, Type *ret_type) {
  *      | "while" "(" expr ")" stmt
  *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *      | declaration ";"
- *      | expr ";"
+ *      | expr? ";"
  */
 Node *stmt() {
     Node *node;
@@ -153,12 +154,15 @@ Node *stmt() {
         node->then = stmt();
         return node;
     } else if (peek(TK_RESERVED, "int") || peek(TK_RESERVED, "char")) {
-        node = declaration();
+        declaration();
+        node = &null_stmt;
+    } else if (consume(TK_RESERVED, ";")) {
+        return &null_stmt;
     } else {
         node = expr();
     }
     if (!consume(TK_RESERVED, ";")) {
-        error_at(token->loc, "expected ';'");
+        error_at(token->loc, "';' expected ");
     }
     return node;
 }
