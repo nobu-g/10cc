@@ -15,6 +15,6 @@ int main(int argc, char **argv) {
     draw_ast(prog);
 #endif
     sema(prog);
-    gen_x86(prog);
+    gen_x86_64(prog);
     return 0;
 }

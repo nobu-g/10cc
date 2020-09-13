@@ -253,7 +253,7 @@ void gen_func(Func *f) {
     printf("  ret\n");
 }
 
-void gen_x86(Program *prog) {
+void gen_x86_64(Program *prog) {
     printf(".intel_syntax noprefix\n");
 
     printf(".data\n");
