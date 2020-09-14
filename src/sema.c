@@ -197,9 +197,6 @@ Node *do_walk(Node *node, bool decay) {
 void sema(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_get(prog->fns->vals, i);
-        for (int j = 0; j < fn->body->len; j++) {
-            Node *node = vec_get(fn->body, j);
-            node = walk(node);
-        }
+        fn->body = walk(fn->body);
     }
 }

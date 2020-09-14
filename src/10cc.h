@@ -64,19 +64,6 @@ struct Type {
     int array_size;  // 配列の要素数
 };
 
-typedef struct {
-    char *name;      // 関数の名前
-    Map *lvars;      // ローカル変数(args含む) (Map<char *, Node *>)
-    Vector *args;    // 引数 (Vector<Node *>)
-    Vector *body;    // 実装 (Vector<Node *>)
-    Type *ret_type;  // 戻り値の型
-} Func;
-
-typedef struct {
-    Map *fns;
-    Map *gvars;
-} Program;
-
 typedef enum {
     ND_ADD,        // +
     ND_SUB,        // -
@@ -131,6 +118,19 @@ struct Node {
     Type *ty;    // used only if node is expr
     int offset;  // used only if kind=ND_LVAR
 };
+
+typedef struct {
+    char *name;      // 関数の名前
+    Map *lvars;      // ローカル変数(args含む) (Map<char *, Node *>)
+    Vector *args;    // 引数 (Vector<Node *>)
+    Node *body;      // 実装
+    Type *ret_type;  // 戻り値の型
+} Func;
+
+typedef struct {
+    Map *fns;
+    Map *gvars;
+} Program;
 
 /*
  * tokenize.c

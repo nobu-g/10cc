@@ -89,9 +89,10 @@ void func(char *name, Type *ret_type) {
     }
     map_insert(prog->fns, fn->name, fn);
     expect(TK_RESERVED, "{");
-    fn->body = vec_create();
+    fn->body = new_node(ND_BLOCK);
+    fn->body->stmts = vec_create();
     while (!consume(TK_RESERVED, "}")) {
-        vec_push(fn->body, stmt());
+        vec_push(fn->body->stmts, stmt());
     }
 }
 

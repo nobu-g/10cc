@@ -144,7 +144,6 @@ void gen(Node *node) {
     case ND_BLOCK:
         for (int i = 0; i < node->stmts->len; i++) {
             gen(vec_get(node->stmts, i));
-            printf("  pop %s\n", reg(8));
         }
         return;
     case ND_ADDR:
@@ -217,19 +216,16 @@ void gen_func(Func *fn) {
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", get_offset(fn->lvars));  // ローカル変数の領域を確保する
+    printf("  sub rsp, %d\n", get_offset(fn->lvars));  // allocate an area of local variables
 
-    // 引数の値を stack に push してローカル変数と同じように扱えるように
+    // push arguments to stack to treat them as local variables
     for (int i = 0; i < fn->args->len; i++) {
         Node *arg = vec_get(fn->args, i);
         printf("  lea rax, [rbp-%d]\n", arg->offset);
         printf("  mov [rax], %s\n", argreg(i, arg->ty->size));
     }
 
-    // 中身のコードを吐く
-    for (int i = 0; i < fn->body->len; i++) {
-        gen(vec_get(fn->body, i));
-    }
+    gen(fn->body);
 
     // epilogue (used when fuction ends without return stmt)
     printf("  mov rsp, rbp\n");
