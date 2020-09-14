@@ -18,7 +18,8 @@ Node *unary();
 Node *postfix();
 Node *primary();
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
+Node *new_node(NodeKind kind);
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(Type *type, int offset);
 Node *new_node_gvar(Type *type, char *name);
@@ -45,28 +46,29 @@ Program *parse() {
  * program = (func|gvar)*
  */
 void top_level() {
-    while (!at_eof()) {
-        Type *type = read_type();
-        Token *tok = consume(TK_IDENT, NULL);
-        if (!tok) {
-            error_at(token->loc, "Invalid identifier");
+    Type *type = read_type();
+    Token *tok = consume(TK_IDENT, NULL);
+    if (!tok) {
+        error_at(token->loc, "Invalid identifier");
+    }
+    if (consume(TK_RESERVED, "(")) {
+        // function
+        func(tok->str, type);
+    } else {
+        // global variable
+        if (consume(TK_RESERVED, "[")) {
+            type = ary_of(type, expect(TK_NUM, NULL)->val);
+            expect(TK_RESERVED, "]");
         }
-        if (consume(TK_RESERVED, "(")) {
-            // function
-            func(tok->str, type);
+
+        Node *gvar = map_at(prog->gvars, tok->str);
+        if (gvar) {
+            error("グローバル変数 %s はすでに宣言されています", tok->str);
         } else {
-            // global variable
-            if (map_at(prog->gvars, tok->str)) {
-                error("グローバル変数 %s はすでに宣言されています", tok->str);
-            }
-            if (consume(TK_RESERVED, "[")) {
-                type = ary_of(type, expect(TK_NUM, NULL)->val);
-                expect(TK_RESERVED, "]");
-            }
             Node *node = new_node_gvar(type, tok->str);
             map_insert(prog->gvars, tok->str, node);
-            expect(TK_RESERVED, ";");
         }
+        expect(TK_RESERVED, ";");
     }
 }
 
@@ -105,20 +107,17 @@ void func(char *name, Type *ret_type) {
 Node *stmt() {
     Node *node;
     if (consume(TK_RESERVED, "{")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_BLOCK;
+        node = new_node(ND_BLOCK);
         node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, stmt());
         }
         return node;
     } else if (consume(TK_RESERVED, "return")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_RETURN;
+        node = new_node(ND_RETURN);
         node->lhs = expr();
     } else if (consume(TK_RESERVED, "if")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_IF;
+        Node *node = new_node(ND_IF);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
@@ -128,16 +127,14 @@ Node *stmt() {
         }
         return node;
     } else if (consume(TK_RESERVED, "while")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_WHILE;
+        Node *node = new_node(ND_WHILE);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
     } else if (consume(TK_RESERVED, "for")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_FOR;
+        Node *node = new_node(ND_FOR);
         expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr();
@@ -201,7 +198,7 @@ Node *expr() { return assign(); }
 Node *assign() {
     Node *node = equality();
     if (consume(TK_RESERVED, "=")) {
-        node = new_node(ND_ASSIGN, node, assign());
+        node = new_node_binop(ND_ASSIGN, node, assign());
     }
     return node;
 }
@@ -212,9 +209,9 @@ Node *assign() {
 Node *equality() {
     Node *node = relational();
     if (consume(TK_RESERVED, "==")) {
-        node = new_node(ND_EQ, node, relational());
+        node = new_node_binop(ND_EQ, node, relational());
     } else if (consume(TK_RESERVED, "!=")) {
-        node = new_node(ND_NE, node, relational());
+        node = new_node_binop(ND_NE, node, relational());
     } else {
         return node;
     }
@@ -226,13 +223,13 @@ Node *equality() {
 Node *relational() {
     Node *node = add();
     if (consume(TK_RESERVED, "<=")) {
-        return new_node(ND_LE, node, add());
+        return new_node_binop(ND_LE, node, add());
     } else if (consume(TK_RESERVED, ">=")) {
-        return new_node(ND_LE, add(), node);
+        return new_node_binop(ND_LE, add(), node);
     } else if (consume(TK_RESERVED, "<")) {
-        return new_node(ND_LT, node, add());
+        return new_node_binop(ND_LT, node, add());
     } else if (consume(TK_RESERVED, ">")) {
-        return new_node(ND_LT, add(), node);
+        return new_node_binop(ND_LT, add(), node);
     } else {
         return node;
     }
@@ -245,9 +242,9 @@ Node *add() {
     Node *node = mul();
     for (;;) {
         if (consume(TK_RESERVED, "+")) {
-            node = new_node(ND_ADD, node, mul());
+            node = new_node_binop(ND_ADD, node, mul());
         } else if (consume(TK_RESERVED, "-")) {
-            node = new_node(ND_SUB, node, mul());
+            node = new_node_binop(ND_SUB, node, mul());
         } else {
             return node;
         }
@@ -261,9 +258,9 @@ Node *mul() {
     Node *node = unary();
     for (;;) {
         if (consume(TK_RESERVED, "*")) {
-            node = new_node(ND_MUL, node, unary());
+            node = new_node_binop(ND_MUL, node, unary());
         } else if (consume(TK_RESERVED, "/")) {
-            node = new_node(ND_DIV, node, unary());
+            node = new_node_binop(ND_DIV, node, unary());
         } else {
             return node;
         }
@@ -278,14 +275,14 @@ Node *unary() {
     if (consume(TK_RESERVED, "+")) {
         return unary();
     } else if (consume(TK_RESERVED, "-")) {
-        return new_node(ND_SUB, new_node_num(0), unary());
+        return new_node_binop(ND_SUB, new_node_num(0), unary());
     } else if (consume(TK_RESERVED, "&")) {
-        return new_node(ND_ADDR, unary(), NULL);
+        return new_node_binop(ND_ADDR, unary(), NULL);
     } else if (consume(TK_RESERVED, "*")) {
-        return new_node(ND_DEREF, unary(), NULL);
+        return new_node_binop(ND_DEREF, unary(), NULL);
     } else if (consume(TK_RESERVED, "sizeof")) {
         // TODO: accept typename
-        return new_node(ND_SIZEOF, unary(), NULL);
+        return new_node_binop(ND_SIZEOF, unary(), NULL);
     } else {
         return postfix();
     }
@@ -302,8 +299,8 @@ Node *postfix() {
         if (consume(TK_RESERVED, "[")) {
             Node *sbsc = expr();
             expect(TK_RESERVED, "]");
-            Node *sum = new_node(ND_ADD, node, sbsc);
-            node = new_node(ND_DEREF, sum, NULL);
+            Node *sum = new_node_binop(ND_ADD, node, sbsc);
+            node = new_node_binop(ND_DEREF, sum, NULL);
         } else {
             return node;
         }
@@ -353,65 +350,49 @@ Node *primary() {
     return new_node_num(expect(TK_NUM, NULL)->val);;
 }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+Node *new_node(NodeKind kind) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
+    return node;
+}
+
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs) {
+    Node *node = new_node(kind);
     node->lhs = lhs;
     node->rhs = rhs;
-
-#if DEBUG <= 1
-    fprintf(stderr, "ND_%d\n", node->kind);
-#endif
     return node;
 }
 
 Node *new_node_func_call(Token *tok, Vector *args) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_FUNC_CALL;
+    Node *node = new_node(ND_FUNC_CALL);
     Func *fn = map_at(prog->fns, tok->str);
     if (!fn) {
         error_at(tok->loc, "Undefined function: '%s'", tok->str);
     }
-
     node->name = tok->str;
     node->args = args;
     node->ty = fn->ret_type;
-#if DEBUG <= 1
-    fprintf(stderr, "ND_FUNC_CALL\n");
-#endif
     return node;
 }
 
 Node *new_node_lvar(Type *type, int offset) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
+    Node *node = new_node(ND_LVAR);
     node->ty = type;
     node->offset = offset;
-#if DEBUG <= 1
-    fprintf(stderr, "ND_LVAR\n");
-#endif
     return node;
 }
 
 Node *new_node_gvar(Type *type, char *name) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_GVAR;
+    Node *node = new_node(ND_GVAR);
     node->ty = type;
     node->name = name;
-#if DEBUG <= 1
-    fprintf(stderr, "ND_GVAR\n");
-#endif
     return node;
 }
 
 Node *new_node_num(int val) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_NUM;
+    Node *node = new_node(ND_NUM);
     node->val = val;
     node->ty = int_ty();
-#if DEBUG <= 1
-    fprintf(stderr, "ND_NUM\n");
-#endif
     return node;
 }
 

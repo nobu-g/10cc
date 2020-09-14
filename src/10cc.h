@@ -125,11 +125,10 @@ struct Node {
 
     // used for function
     Vector *args;  // Vector<Node *>
-    Node *impl;
 
     char *name;  // used only if kind in (ND_FUNC, ND_GVAR)
     int val;     // used only if kind=ND_NUM
-    Type *ty;    // used only if kind in (ND_NUM, ND_LVAR, ND_GVAR)
+    Type *ty;    // used only if node is expr
     int offset;  // used only if kind=ND_LVAR
 };
 
