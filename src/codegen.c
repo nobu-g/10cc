@@ -64,8 +64,6 @@ void gen(Node *node) {
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
             gen(vec_get(node->args, i));
-        }
-        for (int i = node->args->len - 1; 0 <= i; i--) {
             printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
         }
         printf("  call %s\n", node->name);

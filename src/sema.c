@@ -20,12 +20,12 @@
 
 void check_integer(Node *node) {
     int ty = node->ty->ty;
-    assert(ty == INT || ty == CHAR, "Not referable");
+    assert(ty == INT || ty == CHAR, "Not an integer");
 }
 
 void check_referable(Node *node) {
     NodeKind kind = node->kind;
-    assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF, "Not an integer");
+    assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF, "Not referable");
 }
 
 Node *scale_ptr(int op, Node *base, Type *ty) {
@@ -51,9 +51,8 @@ bool same_type(Type *x, Type *y) {
     }
 }
 
-// convert array to pointer
-Node *maybe_decay(Node *base, bool decay) {
-    if (!decay || base->ty->ty != ARRAY) {
+Node *ary_to_ptr(Node *base) {
+    if (base->ty->ty != ARRAY) {
         return base;
     }
 
@@ -71,15 +70,16 @@ Node *walk(Node *node) { return do_walk(node, true); }
 
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
-
-// TODO: decay 実装？
 Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NUM:
             return node;
         case ND_LVAR:
         case ND_GVAR:
-            return maybe_decay(node, decay);
+            if (decay) {
+                node = ary_to_ptr(node);
+            }
+            return node;
         case ND_IF:
             node->cond = walk(node->cond);
             node->then = walk(node->then);
@@ -143,7 +143,7 @@ Node *do_walk(Node *node, bool decay) {
             }
             return node;
         case ND_ASSIGN:
-            node->lhs = walk_nodecay(node->lhs);
+            node->lhs = walk(node->lhs);
             check_referable(node->lhs);
             node->rhs = walk(node->rhs);
             node->ty = node->lhs->ty;  // TODO: lhs と rhs のうち小さい方の ty にする
@@ -169,7 +169,7 @@ Node *do_walk(Node *node, bool decay) {
             node->lhs = walk(node->lhs);
             assert(node->lhs->ty->ty == PTR, "Operand must be a pointer");
             node->ty = node->lhs->ty->ptr_to;
-            return maybe_decay(node, decay);
+            return node;
         case ND_RETURN:
             node->lhs = walk(node->lhs);
             return node;

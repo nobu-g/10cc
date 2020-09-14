@@ -10,7 +10,6 @@ assert() {
   cc -c tests/tmp.s -o tests/tmp.o
   cc -c tests/helper.c -o tests/helper.o
   cc -static -o tests/tmp tests/tmp.o tests/helper.o
-  # cc -o tests/tmp tests/tmp.s
   ./tests/tmp
   actual="$?"
 
@@ -54,10 +53,12 @@ assert 2 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; in
 assert 4 "int main() {return sizeof(4);}"
 assert 8 "int main() {int *a; return sizeof(a);}"
 assert 8 "int main() {int a; a = 42; return sizeof(&a);}"
+assert 4 "int main() {int a[3]; return sizeof(*a);}"
 assert 0 "int main() {int a[10]; return 0;}"
 assert 40 "int main() {int a[10]; return sizeof(a);}"
 assert 1 "int main() {int *a; int b; a = &b; *a = 4; return 1;}"
 assert 3 "int main() {int x; int *y; y = &x; *y = 3; return x;}"
+assert 3 "int main() {int x; x = -3; int *p; p = &x; return *p+-*p*2;}"
 assert 6 "int main() {int a; int b; a = b = 3; return a + b;}"
 assert 7 "int main() {int a; int b; b = 4; b = b + (a = 3); return b;}"
 assert 4 "int main() {int a[1]; *a = 4; return *a;}"
