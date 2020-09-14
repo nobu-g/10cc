@@ -80,7 +80,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             draw_node_tree(node->rhs, depth + 1, "rhs");
             break;
         case ND_ASSIGN:
-            fprintf(stderr, "ASSIGN(ty: %d)\n", node->ty->ty);
+            fprintf(stderr, "ASSIGN\n");
             draw_node_tree(node->lhs, depth + 1, "lhs");
             draw_node_tree(node->rhs, depth + 1, "rhs");
             break;
@@ -137,8 +137,15 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             fprintf(stderr, "DEREF\n");
             draw_node_tree(node->lhs, depth + 1, "");
             break;
-        default:
+        case ND_SIZEOF:
+            fprintf(stderr, "SIZEOF\n");
+            draw_node_tree(node->lhs, depth + 1, "");
             break;
+        case ND_NULL:
+            fprintf(stderr, "NULL\n");
+            break;
+        default:
+            error("Unknown node kind: %d", node->kind);
         }
     }
 }

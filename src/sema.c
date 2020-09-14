@@ -18,11 +18,6 @@
 //
 // - Reject bad assignments, such as `1=2+3`.
 
-Node *new_node_num(int val);
-Type *ptr_to(Type *base);
-Type *int_ty();
-
-
 void check_integer(Node *node) {
     int ty = node->ty->ty;
     assert(ty == INT || ty == CHAR, "Not referable");
@@ -56,14 +51,35 @@ bool same_type(Type *x, Type *y) {
     }
 }
 
+// convert array to pointer
+Node *maybe_decay(Node *base, bool decay) {
+    if (!decay || base->ty->ty != ARRAY) {
+        return base;
+    }
+
+    // &(base[0])
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_ADDR;
+    node->ty = ptr_to(base->ty->ptr_to);
+    node->lhs = base;
+    return node;
+}
+
+Node *do_walk(Node *node, bool decay);
+
+Node *walk(Node *node) { return do_walk(node, true); }
+
+Node *walk_nodecay(Node *node) { return do_walk(node, false); }
+
+
 // TODO: decay 実装？
-Node *walk(Node *node) {
+Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NUM:
             return node;
         case ND_LVAR:
         case ND_GVAR:
-            return node;
+            return maybe_decay(node, decay);
         case ND_IF:
             node->cond = walk(node->cond);
             node->then = walk(node->then);
@@ -127,7 +143,7 @@ Node *walk(Node *node) {
             }
             return node;
         case ND_ASSIGN:
-            node->lhs = walk(node->lhs);
+            node->lhs = walk_nodecay(node->lhs);
             check_referable(node->lhs);
             node->rhs = walk(node->rhs);
             node->ty = node->lhs->ty;  // TODO: lhs と rhs のうち小さい方の ty にする
@@ -153,21 +169,25 @@ Node *walk(Node *node) {
             node->lhs = walk(node->lhs);
             assert(node->lhs->ty->ty == PTR, "Operand must be a pointer");
             node->ty = node->lhs->ty->ptr_to;
-            return node;
+            return maybe_decay(node, decay);
         case ND_RETURN:
             node->lhs = walk(node->lhs);
             return node;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
                 Node *arg = vec_get(node->args, i);
-                arg = walk(arg);
+                vec_set(node->args, i, walk(arg));
             }
             return node;
         case ND_BLOCK:
             for (int i = 0; i < node->stmts->len; i++) {
-                Node *stmt = vec_get(node->args, i);
-                stmt = walk(stmt);
+                Node *stmt = vec_get(node->stmts, i);
+                vec_set(node->stmts, i, walk(stmt));
             }
+            return node;
+        case ND_SIZEOF:
+            return new_node_num(walk_nodecay(node->lhs)->ty->size);;
+        case ND_NULL:
             return node;
         default:
             error("Unknown node kind: %d", node->kind);

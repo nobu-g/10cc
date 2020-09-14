@@ -26,6 +26,7 @@ typedef struct {
 Vector *vec_create();
 void vec_push(Vector *vec, void *elem);
 void *vec_get(Vector *vec, int index);
+void *vec_set(Vector *vec, int index, void *elem);
 
 typedef struct {
     Vector *keys;
@@ -97,6 +98,7 @@ typedef enum {
     ND_NUM,        // number
     ND_ADDR,       // unary &
     ND_DEREF,      // unary *
+    ND_SIZEOF,     // sizeof
     ND_NULL        // NOP
 } NodeKind;
 
@@ -142,11 +144,15 @@ Token *peek(TokenKind kind, char *str);
 Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
 bool at_eof();
+
 /*
  * parse.c
  */
 Program *parse();
 int get_offset(Map *lvars);
+Node *new_node_num(int val);
+Type *ptr_to(Type *base);
+Type *int_ty();
 
 /*
  * sema.c

@@ -223,7 +223,7 @@ void gen_func(Func *fn) {
     for (int i = 0; i < fn->args->len; i++) {
         Node *arg = vec_get(fn->args, i);
         printf("  lea rax, [rbp-%d]\n", arg->offset);
-        printf("  mov [rax], %s\n", argreg(i, arg->ty->size));  // 第 i 引数の値をraxが指すメモリにコピー
+        printf("  mov [rax], %s\n", argreg(i, arg->ty->size));
     }
 
     // 中身のコードを吐く
@@ -231,7 +231,7 @@ void gen_func(Func *fn) {
         gen(vec_get(fn->body, i));
     }
 
-    // epilogue (when fuction ends without return stmt)
+    // epilogue (used when fuction ends without return stmt)
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
@@ -240,10 +240,13 @@ void gen_func(Func *fn) {
 void gen_x86_64(Program *prog) {
     printf(".intel_syntax noprefix\n");
 
+    // data segment
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
         gen_gvar(vec_get(prog->gvars->vals, i));
     }
+
+    // text segment
     printf("\n");
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {

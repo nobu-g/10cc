@@ -15,6 +15,7 @@ Node *relational();
 Node *add();
 Node *mul();
 Node *unary();
+Node *postfix();
 Node *primary();
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
@@ -28,7 +29,6 @@ Type *int_ty();
 Type *char_ty();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
-Node *ary_to_ptr(Node *node);
 Type *read_type();
 
 Program *parse() {
@@ -109,7 +109,7 @@ Node *stmt() {
         node->kind = ND_BLOCK;
         node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
-            vec_push(node->stmts, (void *)stmt());
+            vec_push(node->stmts, stmt());
         }
         return node;
     } else if (consume(TK_RESERVED, "return")) {
@@ -245,23 +245,9 @@ Node *add() {
     Node *node = mul();
     for (;;) {
         if (consume(TK_RESERVED, "+")) {
-            Node *rhs;
-            if (node->ty->ty == PTR || node->ty->ty == ARRAY) {
-                int size = node->ty->ptr_to->size;
-                rhs = new_node(ND_MUL, mul(), new_node_num(size));
-            } else {
-                rhs = mul();
-            }
-            node = new_node(ND_ADD, node, rhs);
+            node = new_node(ND_ADD, node, mul());
         } else if (consume(TK_RESERVED, "-")) {
-            Node *rhs;
-            if (node->ty->ty == PTR || node->ty->ty == ARRAY) {
-                int size = node->ty->ptr_to->size;
-                rhs = new_node(ND_MUL, mul(), new_node_num(size));
-            } else {
-                rhs = mul();
-            }
-            node = new_node(ND_SUB, node, rhs);
+            node = new_node(ND_SUB, node, mul());
         } else {
             return node;
         }
@@ -286,29 +272,49 @@ Node *mul() {
 
 /*
  * unary = "sizeof" unary
- *       | ("+" | "-" | "&" | "*")? primary
+ *       | ("+" | "-" | "&" | "*")? unary
  */
 Node *unary() {
     if (consume(TK_RESERVED, "+")) {
-        return primary();
+        return unary();
     } else if (consume(TK_RESERVED, "-")) {
-        return new_node(ND_SUB, new_node_num(0), primary());
+        return new_node(ND_SUB, new_node_num(0), unary());
     } else if (consume(TK_RESERVED, "&")) {
         return new_node(ND_ADDR, unary(), NULL);
     } else if (consume(TK_RESERVED, "*")) {
         return new_node(ND_DEREF, unary(), NULL);
     } else if (consume(TK_RESERVED, "sizeof")) {
         // TODO: accept typename
-        return new_node_num(unary()->ty->size);
+        return new_node(ND_SIZEOF, unary(), NULL);
     } else {
-        return primary();
+        return postfix();
     }
 }
 
 /**
- * primary = num               // immediate value
- *         | ident ("(" ")")?  // variable reference or function call
- *         | "(" expr ")"      // parenthesis
+ * postfix = primary
+ *         | primary ("[" expr "]")+
+ */
+Node *postfix() {
+    Node *node = primary();
+
+    while(true) {
+        if (consume(TK_RESERVED, "[")) {
+            Node *sbsc = expr();
+            expect(TK_RESERVED, "]");
+            Node *sum = new_node(ND_ADD, node, sbsc);
+            node = new_node(ND_DEREF, sum, NULL);
+        } else {
+            return node;
+        }
+    }
+}
+
+/**
+ * primary = "(" expr ")"              // parenthesis
+ *         | ident ("(" args ")")      // function call
+ *         | ident                     // variable reference
+ *         | num                       // immediate value
  */
 Node *primary() {
     // "(" expr ")"
@@ -320,8 +326,8 @@ Node *primary() {
 
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
+        // function call
         if (consume(TK_RESERVED, "(")) {
-            // function call
             Vector *args = vec_create();
             while (!consume(TK_RESERVED, ")")) {
                 if (args->len > 0) {
@@ -330,57 +336,21 @@ Node *primary() {
                 vec_push(args, expr());
             }
             return new_node_func_call(tok, args);
-        } else if (consume(TK_RESERVED, "[")) {
-            // variable reference (subscript access)
-            Node *lhs = map_at(fn->lvars, tok->str);
-            if (!lhs) {
-                lhs = map_at(prog->gvars, tok->str);
-                if (!lhs) {
-                    error("undefined variable: '%s'", tok->str);
-                }
-            }
-            Node *rhs = new_node(ND_MUL, expr(), new_node_num(lhs->ty->ptr_to->size));
-            expect(TK_RESERVED, "]");
-            Node *sum = new_node(ND_ADD, lhs, rhs);
-            return new_node(ND_DEREF, sum, NULL);
-        } else {
-            // variable reference
-            Node *lvar = map_at(fn->lvars, tok->str);
-            if (!lvar) {
-                Node *gvar = map_at(prog->gvars, tok->str);
-                if (!gvar) {
-                    error("undefined variable: '%s'", tok->str);
-                }
-                return new_node_gvar(gvar->ty, gvar->name);
-            }
-            return new_node_lvar(lvar->ty, lvar->offset);
         }
-    }
 
-    // x[y] is equivalent to *(x+y)
-    Node *node = new_node_num(expect(TK_NUM, NULL)->val);
-    if (consume(TK_RESERVED, "[")) {
-        Node *lhs, *rhs;
-        tok = consume(TK_IDENT, NULL);
-        if (tok) {
-            lhs = map_at(fn->lvars, tok->str);
-            if (!lhs) {
+        // variable reference
+        Node *lvar = map_at(fn->lvars, tok->str);
+        if (!lvar) {
+            Node *gvar = map_at(prog->gvars, tok->str);
+            if (!gvar) {
                 error("undefined variable: '%s'", tok->str);
             }
-            if (lhs->ty->ty == ARRAY || lhs->ty->ty == PTR) {
-                rhs = new_node(ND_MUL, node, new_node_num(lhs->ty->ptr_to->size));
-            } else {
-                rhs = node;  // deref で死ぬ†運命[さだめ]†
-            }
-        } else {
-            lhs = new_node_num(expect(TK_NUM, NULL)->val);
-            rhs = node;  // deref で死ぬ†運命[さだめ]†
+            return new_node_gvar(gvar->ty, gvar->name);
         }
-        expect(TK_RESERVED, "]");
-        Node *sum = new_node(ND_ADD, lhs, rhs);
-        return new_node(ND_DEREF, sum, NULL);
+        return new_node_lvar(lvar->ty, lvar->offset);
     }
-    return node;
+
+    return new_node_num(expect(TK_NUM, NULL)->val);;
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -389,34 +359,6 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     node->lhs = lhs;
     node->rhs = rhs;
 
-    if (node->lhs && (node->lhs->kind == ND_LVAR || node->lhs->kind == ND_GVAR) && node->lhs->ty->ty == ARRAY) {
-        node->lhs = ary_to_ptr(node->lhs);
-    }
-    if (node->rhs && (node->lhs->kind == ND_LVAR || node->lhs->kind == ND_GVAR) && node->rhs->ty->ty == ARRAY) {
-        node->rhs = ary_to_ptr(node->rhs);
-    }
-
-    switch (kind) {
-    case ND_ADD:
-    case ND_SUB:
-    case ND_MUL:
-    case ND_DIV:
-    case ND_EQ:
-    case ND_NE:
-    case ND_LE:
-    case ND_LT:
-    case ND_ASSIGN:
-        node->ty = lhs->ty;
-        break;
-    case ND_ADDR:
-        node->ty = ptr_to(lhs->ty);
-        break;
-    case ND_DEREF:
-        node->ty = node->lhs->ty->ptr_to;
-        break;
-    default:
-        break;
-    }
 #if DEBUG <= 1
     fprintf(stderr, "ND_%d\n", node->kind);
 #endif
@@ -454,8 +396,8 @@ Node *new_node_lvar(Type *type, int offset) {
 Node *new_node_gvar(Type *type, char *name) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_GVAR;
-    node->name = name;
     node->ty = type;
+    node->name = name;
 #if DEBUG <= 1
     fprintf(stderr, "ND_GVAR\n");
 #endif
@@ -466,7 +408,7 @@ Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
-    node->ty = new_ty(INT, 4);
+    node->ty = int_ty();
 #if DEBUG <= 1
     fprintf(stderr, "ND_NUM\n");
 #endif
@@ -507,20 +449,6 @@ Type *ary_of(Type *base, int size) {
     ty->ptr_to = base;
     ty->array_size = size;
     return ty;
-}
-
-Node *ary_to_ptr(Node *base) {
-    if (base->ty->ty != ARRAY) {
-        error("配列ではありません");
-    }
-
-    // &(base[0])
-    Node *addr = calloc(1, sizeof(Node));
-    addr->kind = ND_ADDR;
-    addr->lhs = base;
-    addr->ty = ptr_to(base->ty->ptr_to);
-
-    return addr;
 }
 
 Type *read_type() {

@@ -18,7 +18,20 @@ void vec_push(Vector *vec, void *elem) {
     vec->data[vec->len++] = elem;
 }
 
-void *vec_get(Vector *vec, int index) { return vec->data[index]; }
+void *vec_get(Vector *vec, int index) {
+    if (index >= vec->len) {
+        return NULL;
+    }
+    return vec->data[index];
+}
+
+void *vec_set(Vector *vec, int index, void *elem) {
+    if (index >= vec->len) {
+        return NULL;
+    }
+    vec->data[index] = elem;
+    return elem;
+}
 
 Map *map_create() {
     Map *map = malloc(sizeof(Map));
