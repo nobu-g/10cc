@@ -21,6 +21,14 @@ void error_at(char *loc, char *fmt, ...) {
     exit(1);
 }
 
+void assert(bool cond, char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    if (!cond) {
+        error(fmt, ap);
+    }
+}
+
 void draw_node_tree(Node *node, int depth, char *prefix) {
     if (node != NULL) {
         for (int i = 0; i < depth; i++) {
