@@ -296,7 +296,7 @@ Node *unary() {
 Node *postfix() {
     Node *node = primary();
 
-    while(true) {
+    while (true) {
         if (consume(TK_RESERVED, "[")) {
             Node *sbsc = expr();
             expect(TK_RESERVED, "]");
@@ -343,12 +343,13 @@ Node *primary() {
             if (!gvar) {
                 error("undefined variable: '%s'", tok->str);
             }
-            return new_node_gvar(gvar->ty, gvar->name);
+            return new_node_gvar(gvar->type, gvar->name);
         }
-        return new_node_lvar(lvar->ty, lvar->offset);
+        return new_node_lvar(lvar->type, lvar->offset);
     }
 
-    return new_node_num(expect(TK_NUM, NULL)->val);;
+    return new_node_num(expect(TK_NUM, NULL)->val);
+    ;
 }
 
 Node *new_node(NodeKind kind) {
@@ -372,20 +373,20 @@ Node *new_node_func_call(Token *tok, Vector *args) {
     }
     node->name = tok->str;
     node->args = args;
-    node->ty = fn->ret_type;
+    node->type = fn->ret_type;
     return node;
 }
 
 Node *new_node_lvar(Type *type, int offset) {
     Node *node = new_node(ND_LVAR);
-    node->ty = type;
+    node->type = type;
     node->offset = offset;
     return node;
 }
 
 Node *new_node_gvar(Type *type, char *name) {
     Node *node = new_node(ND_GVAR);
-    node->ty = type;
+    node->type = type;
     node->name = name;
     return node;
 }
@@ -393,7 +394,7 @@ Node *new_node_gvar(Type *type, char *name) {
 Node *new_node_num(int val) {
     Node *node = new_node(ND_NUM);
     node->val = val;
-    node->ty = int_ty();
+    node->type = int_ty();
     return node;
 }
 
@@ -404,7 +405,7 @@ int get_offset(Map *lvars) {
     int offset = 0;
     for (int i = 0; i < lvars->len; i++) {
         Node *lvar = vec_get(lvars->vals, i);
-        offset += lvar->ty->size;
+        offset += lvar->type->size;
     }
     return offset;
 }
@@ -421,29 +422,29 @@ Type *int_ty() { return new_ty(INT, 4); }
 Type *char_ty() { return new_ty(CHAR, 1); }
 
 Type *ptr_to(Type *dest) {
-    Type *ty = new_ty(PTR, 8);
-    ty->ptr_to = dest;
-    return ty;
+    Type *type = new_ty(PTR, 8);
+    type->ptr_to = dest;
+    return type;
 }
 
 Type *ary_of(Type *base, int size) {
-    Type *ty = new_ty(ARRAY, base->size * size);
-    ty->ptr_to = base;
-    ty->array_size = size;
-    return ty;
+    Type *type = new_ty(ARRAY, base->size * size);
+    type->ptr_to = base;
+    type->array_size = size;
+    return type;
 }
 
 Type *read_type() {
-    Type *ty;
+    Type *type;
     if (consume(TK_RESERVED, "int")) {
-        ty = int_ty();
+        type = int_ty();
     } else if (consume(TK_RESERVED, "char")) {
-        ty = char_ty();
+        type = char_ty();
     } else {
         error_at(token->loc, "Invalid type");
     }
     while (consume(TK_RESERVED, "*")) {
-        ty = ptr_to(ty);
+        type = ptr_to(type);
     }
-    return ty;
+    return type;
 }

@@ -115,7 +115,7 @@ struct Node {
 
     char *name;  // used only if kind in (ND_FUNC, ND_GVAR)
     int val;     // used only if kind=ND_NUM
-    Type *ty;    // used only if node is expr
+    Type *type;  // used only if node is expr
     int offset;  // used only if kind=ND_LVAR
 };
 

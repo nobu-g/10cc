@@ -72,9 +72,9 @@ void gen(Node *node) {
     case ND_GVAR:
     case ND_LVAR:
         gen_var(node);
-        printf("  pop rax\n");                             // set rax to the address of the variable
-        printf("  mov %s, [rax]\n", reg(node->ty->size));  // raxの指す先にアクセスして中身をraxにコピー
-        if (node->ty->size == 1) {
+        printf("  pop rax\n");                               // set rax to the address of the variable
+        printf("  mov %s, [rax]\n", reg(node->type->size));  // raxの指す先にアクセスして中身をraxにコピー
+        if (node->type->size == 1) {
             printf("  movsx %s, %s\n", reg(8), reg(1));
         }
         printf("  push %s\n", reg(8));  // コピーしてきた値をスタックにpush
@@ -82,14 +82,14 @@ void gen(Node *node) {
     case ND_ASSIGN:
         if (node->lhs->kind == ND_DEREF) {
             gen(node->lhs->lhs);  // node->lhs->lhs: ポインタ型 local variable
-        } else  {
+        } else {
             gen_var(node->lhs);
         }
         gen(node->rhs);
-        printf("  pop %s\n", reg(8));                           // rhs
-        printf("  pop rax\n");                                  // lhs (address)
-        printf("  mov [rax], %s\n", reg(node->lhs->ty->size));  // copy rhs value to the memory pointed to by rax
-        printf("  push %s\n", reg(8));                          // write the result of assign operation
+        printf("  pop %s\n", reg(8));                             // rhs
+        printf("  pop rax\n");                                    // lhs (address)
+        printf("  mov [rax], %s\n", reg(node->lhs->type->size));  // copy rhs value to the memory pointed to by rax
+        printf("  push %s\n", reg(8));                            // write the result of assign operation
         return;
     case ND_RETURN:
         gen(node->lhs);
@@ -150,8 +150,8 @@ void gen(Node *node) {
     case ND_DEREF:       // 右辺値参照
         gen(node->lhs);  // アドレスがスタックに積まれる
         printf("  pop rax\n");
-        printf("  mov %s, [rax]\n", reg(node->ty->size));
-        if (node->ty->size == 1) {
+        printf("  mov %s, [rax]\n", reg(node->type->size));
+        if (node->type->size == 1) {
             printf("  movsx %s, %s\n", reg(8), reg(1));
         }
         printf("  push %s\n", reg(8));
@@ -204,7 +204,7 @@ void gen(Node *node) {
 
 void gen_gvar(Node *gvar) {
     printf("%s:\n", gvar->name);
-    printf("  .zero %d\n", gvar->ty->size);
+    printf("  .zero %d\n", gvar->type->size);
 }
 
 void gen_func(Func *fn) {
@@ -220,7 +220,7 @@ void gen_func(Func *fn) {
     for (int i = 0; i < fn->args->len; i++) {
         Node *arg = vec_get(fn->args, i);
         printf("  lea rax, [rbp-%d]\n", arg->offset);
-        printf("  mov [rax], %s\n", argreg(i, arg->ty->size));
+        printf("  mov [rax], %s\n", argreg(i, arg->type->size));
     }
 
     gen(fn->body);
