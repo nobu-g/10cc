@@ -117,7 +117,7 @@ Node *do_walk(Node *node, bool decay) {
                 node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->ty);
                 node->ty = node->lhs->ty;
             } else {
-                node->ty = int_ty();  // TODO: lhs と rhs のうち小さい方の ty にする
+                node->ty = int_ty();
             }
             return node;
         case ND_SUB:
@@ -137,16 +137,16 @@ Node *do_walk(Node *node, bool decay) {
                 node->ty = lty;
             } else {
                 if (rty->ty == PTR) {
-                    error("Invalid operands: %d and %d", lty, rty);
+                    error("Invalid operands: %d and %d", lty->ty, rty->ty);
                 }
-                node->ty = int_ty();  // TODO
+                node->ty = int_ty();
             }
             return node;
         case ND_ASSIGN:
             node->lhs = walk(node->lhs);
             check_referable(node->lhs);
             node->rhs = walk(node->rhs);
-            node->ty = node->lhs->ty;  // TODO: lhs と rhs のうち小さい方の ty にする
+            node->ty = node->lhs->ty;
             return node;
         case ND_MUL:
         case ND_DIV:
