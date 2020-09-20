@@ -280,8 +280,9 @@ Node *mul() {
 }
 
 /*
- * unary = "sizeof" unary
- *       | ("+" | "-" | "&" | "*") unary
+ * unary = ("+" | "-" | "&" | "*") unary
+ *       | "sizeof" "(" (T|expr) ")"
+ *       | "sizeof" unary
  *       | postfix
  */
 Node *unary() {
@@ -294,8 +295,19 @@ Node *unary() {
     } else if (consume(TK_RESERVED, "*")) {
         return new_node_uniop(ND_DEREF, unary());
     } else if (consume(TK_RESERVED, "sizeof")) {
-        // TODO: accept typename
-        return new_node_uniop(ND_SIZEOF, unary());
+        Node *node;
+        if (consume(TK_RESERVED, "(")) {
+            if (at_typename()) {
+                node = new_node(ND_NULL);
+                node->type = read_type();
+            } else {
+                node = expr();
+            }
+            expect(TK_RESERVED, ")");
+        } else {
+            node = unary();
+        }
+        return new_node_uniop(ND_SIZEOF, node);
     } else {
         return postfix();
     }
