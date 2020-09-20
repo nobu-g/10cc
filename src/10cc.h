@@ -58,17 +58,22 @@ struct Token {
 typedef struct Type Type;
 
 struct Type {
-    enum { INT, CHAR, PTR, ARRAY } ty;  // ->tyでアクセスするとINT: 0, PTR: 1, ARRAY: 2
+    enum { INT, CHAR, PTR, ARRAY } ty;
     int size;                           // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
-    int array_size;  // 配列の要素数
+    int array_size;  // number of array elements
 };
 
 typedef struct LVar {
     char *name;
     Type *type;
-    int offset;
+    int offset;  // offset from RBP
 } LVar;
+
+typedef struct GVar {
+    char *name;
+    Type *type;
+} GVar;
 
 typedef enum {
     ND_ADD,        // +
@@ -88,7 +93,7 @@ typedef enum {
     ND_FUNC_CALL,  // function call
     ND_LVAR,       // local variable
     ND_GVAR,       // global variable
-    ND_NUM,        // number
+    ND_NUM,        // immediate value
     ND_ADDR,       // unary &
     ND_DEREF,      // unary *
     ND_SIZEOF,     // sizeof
@@ -119,23 +124,24 @@ struct Node {
     // used for function call
     Vector *args;  // Vector<Node *>
 
-    char *name;  // used only if kind in (ND_FUNC, ND_GVAR)
-    int val;     // used only if kind=ND_NUM
+    char *name;  // used only if kind = ND_FUNC_CALL
+    int val;     // used only if kind = ND_NUM
     Type *type;  // used only if node is expr
-    LVar *lvar;  // used only if kind=ND_LVAR
+    LVar *lvar;  // used only if kind = ND_LVAR
+    GVar *gvar;  // used only if kind = ND_GVAR
 };
 
 typedef struct {
-    char *name;      // 関数の名前
-    Map *lvars;      // ローカル変数(args含む) (Map<char *, LVar *>)
-    Vector *args;    // 引数 (Vector<LVar *>)
-    Node *body;      // 実装
-    Type *ret_type;  // 戻り値の型
+    char *name;      // name of function
+    Map *lvars;      // local variables (including arguments) (Map<char *, LVar *>)
+    Vector *args;    // arguments (Vector<LVar *>)
+    Node *body;      // implementation
+    Type *ret_type;  // type of return value
 } Func;
 
 typedef struct {
-    Map *fns;
-    Map *gvars;
+    Map *fns;    // function definitions (Map<char *, Func *>)
+    Map *gvars;  // global variable declarations (Map<char *, GVar *>)
 } Program;
 
 /*

@@ -71,7 +71,12 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     case ND_LVAR:
         node->type = node->lvar->type;
+        if (decay) {
+            node = ary_to_ptr(node);
+        }
+        return node;
     case ND_GVAR:
+        node->type = node->gvar->type;
         if (decay) {
             node = ary_to_ptr(node);
         }

@@ -38,13 +38,13 @@ char *argreg(int r, int size) {
 }
 
 // Push the address of the local/global variable represented by node
-void gen_var(Node *node) {
+void gen_val(Node *node) {
     switch (node->kind) {
     case ND_LVAR:
         printf("  lea rax, [rbp-%d]\n", node->lvar->offset);
         break;
     case ND_GVAR:
-        printf("  lea rax, %s\n", node->name);
+        printf("  lea rax, %s\n", node->gvar->name);
         break;
     default:
         error("Local or global variable expected");
@@ -71,7 +71,7 @@ void gen(Node *node) {
         return;
     case ND_GVAR:
     case ND_LVAR:
-        gen_var(node);
+        gen_val(node);
         printf("  pop rax\n");                               // set rax to the address of the variable
         printf("  mov %s, [rax]\n", reg(node->type->size));  // raxの指す先にアクセスして中身をraxにコピー
         if (node->type->size == 1) {
@@ -83,7 +83,7 @@ void gen(Node *node) {
         if (node->lhs->kind == ND_DEREF) {
             gen(node->lhs->lhs);  // node->lhs->lhs: ポインタ型 local variable
         } else {
-            gen_var(node->lhs);
+            gen_val(node->lhs);
         }
         gen(node->rhs);
         printf("  pop %s\n", reg(8));                             // rhs
@@ -145,7 +145,7 @@ void gen(Node *node) {
         }
         return;
     case ND_ADDR:
-        gen_var(node->lhs);
+        gen_val(node->lhs);
         return;
     case ND_DEREF:       // 右辺値参照
         gen(node->lhs);  // アドレスがスタックに積まれる
@@ -202,7 +202,7 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-void gen_gvar(Node *gvar) {
+void gen_gvar(GVar *gvar) {
     printf("%s:\n", gvar->name);
     printf("  .zero %d\n", gvar->type->size);
 }

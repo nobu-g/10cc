@@ -23,7 +23,7 @@ Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(LVar *lvar);
-Node *new_node_gvar(Type *type, char *name);
+Node *new_node_gvar(GVar *gvar);
 Node *new_node_func_call(Token *tok, Vector *args);
 
 Type *new_ty(int ty, int size);
@@ -62,12 +62,14 @@ void top_level() {
             expect(TK_RESERVED, "]");
         }
 
-        Node *gvar = map_at(prog->gvars, tok->str);
+        GVar *gvar = map_at(prog->gvars, tok->str);
         if (gvar) {
             error("Redeclaration of global variable '%s'", tok->str);
         } else {
-            Node *node = new_node_gvar(type, tok->str);
-            map_insert(prog->gvars, tok->str, node);
+            GVar *gvar = calloc(1, sizeof(GVar));
+            gvar->name = tok->str;
+            gvar->type = type;
+            map_insert(prog->gvars, gvar->name, gvar);
         }
         expect(TK_RESERVED, ";");
     }
@@ -346,11 +348,11 @@ Node *primary() {
         // variable reference
         LVar *lvar = map_at(fn->lvars, tok->str);
         if (!lvar) {
-            Node *gvar = map_at(prog->gvars, tok->str);
+            GVar *gvar = map_at(prog->gvars, tok->str);
             if (!gvar) {
                 error("undefined variable: '%s'", tok->str);
             }
-            return new_node_gvar(gvar->type, gvar->name);
+            return new_node_gvar(gvar);
         }
         return new_node_lvar(lvar);
     }
@@ -396,10 +398,9 @@ Node *new_node_lvar(LVar *lvar) {
     return node;
 }
 
-Node *new_node_gvar(Type *type, char *name) {
+Node *new_node_gvar(GVar *gvar) {
     Node *node = new_node(ND_GVAR);
-    node->type = type;
-    node->name = name;
+    node->gvar = gvar;
     return node;
 }
 
