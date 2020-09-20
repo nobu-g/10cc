@@ -270,7 +270,8 @@ Node *mul() {
 
 /*
  * unary = "sizeof" unary
- *       | ("+" | "-" | "&" | "*")? unary
+ *       | ("+" | "-" | "&" | "*") unary
+ *       | postfix
  */
 Node *unary() {
     if (consume(TK_RESERVED, "+")) {

@@ -187,7 +187,6 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     case ND_SIZEOF:
         return new_node_num(walk_nodecay(node->lhs)->type->size);
-        ;
     case ND_NULL:
         return node;
     default:
