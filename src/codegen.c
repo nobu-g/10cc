@@ -42,14 +42,18 @@ void gen_val(Node *node) {
     switch (node->kind) {
     case ND_LVAR:
         printf("  lea rax, [rbp-%d]\n", node->lvar->offset);
+        printf("  push rax\n");
         break;
     case ND_GVAR:
         printf("  lea rax, %s\n", node->gvar->name);
+        printf("  push rax\n");
+        break;
+    case ND_DEREF:
+        gen(node->lhs);
         break;
     default:
-        error("Local or global variable expected");
+        error("Referable node expected");
     }
-    printf("  push rax\n");
 }
 
 // スタックから入力を受け取り、nodeが表す演算の結果をスタックに戻す処理を生成する
@@ -80,11 +84,7 @@ void gen(Node *node) {
         printf("  push %s\n", reg(8));  // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
-        if (node->lhs->kind == ND_DEREF) {
-            gen(node->lhs->lhs);  // node->lhs->lhs: ポインタ型 local variable
-        } else {
-            gen_val(node->lhs);
-        }
+        gen_val(node->lhs);
         gen(node->rhs);
         printf("  pop %s\n", reg(8));                             // rhs
         printf("  pop rax\n");                                    // lhs (address)

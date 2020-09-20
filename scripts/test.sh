@@ -80,3 +80,5 @@ assert 3 "int main() {char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] 
 assert 1 "int main() {char a; char b; char c; char d; a = 1; b = 2; c = 3; d = 4; char *p; p = &c; char *q; q = p + 2; return *q;}"
 assert 4 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; int *p; p = &c; int *q; q = p - 1; return *q;}"
 assert 2 "int main() {char a; char b; char c; char d; a = 1; b = 2; c = 3; d = 4; char *p; p = &d + 2; return *p;}"
+assert 3 "int main() {char arr[4]; return &arr[3] - &arr[0];}"
+assert 3 "int main() {int arr[4]; return &arr[3] - &arr[0];}"
