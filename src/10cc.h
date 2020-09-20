@@ -101,6 +101,7 @@ typedef enum {
 } NodeKind;
 
 typedef struct Node Node;
+typedef struct Func Func;
 
 struct Node {
     NodeKind kind;
@@ -122,22 +123,22 @@ struct Node {
     Vector *stmts;  // Vector<Node *>
 
     // used for function call
+    Func *func;
     Vector *args;  // Vector<Node *>
 
-    char *name;  // used only if kind = ND_FUNC_CALL
     int val;     // used only if kind = ND_NUM
     Type *type;  // used only if node is expr
     LVar *lvar;  // used only if kind = ND_LVAR
     GVar *gvar;  // used only if kind = ND_GVAR
 };
 
-typedef struct {
+struct Func {
     char *name;      // name of function
     Map *lvars;      // local variables (including arguments) (Map<char *, LVar *>)
     Vector *args;    // arguments (Vector<LVar *>)
     Node *body;      // implementation
     Type *ret_type;  // type of return value
-} Func;
+};
 
 typedef struct {
     Map *fns;    // function definitions (Map<char *, Func *>)

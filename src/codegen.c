@@ -85,7 +85,7 @@ void gen(Node *node) {
             gen(vec_get(node->args, i));
             printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
         }
-        printf("  call %s\n", node->name);
+        printf("  call %s\n", node->func->name);
         printf("  push rax\n");
         return;
     case ND_GVAR:

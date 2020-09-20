@@ -390,9 +390,8 @@ Node *new_node_func_call(Token *tok, Vector *args) {
     if (!fn) {
         error_at(tok->loc, "Undefined function: '%s'", tok->str);
     }
-    node->name = tok->str;
+    node->func = fn;
     node->args = args;
-    node->type = fn->ret_type;
     return node;
 }
 

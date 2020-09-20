@@ -52,20 +52,6 @@ Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 Node *do_walk(Node *node, bool decay) {
     assert(node, "Cannot walk on NULL node\n");
     switch (node->kind) {
-    case ND_NUM:
-        return node;
-    case ND_LVAR:
-        node->type = node->lvar->type;
-        if (decay) {
-            node = ary_to_ptr(node);
-        }
-        return node;
-    case ND_GVAR:
-        node->type = node->gvar->type;
-        if (decay) {
-            node = ary_to_ptr(node);
-        }
-        return node;
     case ND_IF:
         node->cond = walk(node->cond);
         node->then = walk(node->then);
@@ -88,6 +74,12 @@ Node *do_walk(Node *node, bool decay) {
     case ND_WHILE:
         node->cond = walk(node->cond);
         node->then = walk(node->then);
+        return node;
+    case ND_BLOCK:
+        for (int i = 0; i < node->stmts->len; i++) {
+            Node *stmt = vec_get(node->stmts, i);
+            vec_set(node->stmts, i, walk(stmt));
+        }
         return node;
     case ND_ADD:
         node->lhs = walk(node->lhs);
@@ -163,15 +155,23 @@ Node *do_walk(Node *node, bool decay) {
             Node *arg = vec_get(node->args, i);
             vec_set(node->args, i, walk(arg));
         }
-        return node;
-    case ND_BLOCK:
-        for (int i = 0; i < node->stmts->len; i++) {
-            Node *stmt = vec_get(node->stmts, i);
-            vec_set(node->stmts, i, walk(stmt));
-        }
+        node->type = node->func->ret_type;
         return node;
     case ND_SIZEOF:
         return new_node_num(walk_nodecay(node->lhs)->type->size);
+    case ND_LVAR:
+        node->type = node->lvar->type;
+        if (decay) {
+            node = ary_to_ptr(node);
+        }
+        return node;
+    case ND_GVAR:
+        node->type = node->gvar->type;
+        if (decay) {
+            node = ary_to_ptr(node);
+        }
+        return node;
+    case ND_NUM:
     case ND_NULL:
         return node;
     default:
