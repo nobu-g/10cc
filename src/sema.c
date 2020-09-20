@@ -152,8 +152,10 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
-            Node *arg = vec_get(node->args, i);
-            vec_set(node->args, i, walk(arg));
+            Node *arg = walk(vec_get(node->args, i));
+            Type *type_expected = ((LVar *)vec_get(node->func->args, i))->type;
+            assert(same_type(arg->type, type_expected), "Argument type mismatch");
+            vec_set(node->args, i, arg);
         }
         node->type = node->func->ret_type;
         return node;
