@@ -65,10 +65,12 @@ Node *walk(Node *node) { return do_walk(node, true); }
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
 Node *do_walk(Node *node, bool decay) {
+    assert(node, "Cannot walk on NULL node\n");
     switch (node->kind) {
     case ND_NUM:
         return node;
     case ND_LVAR:
+        node->type = node->lvar->type;
     case ND_GVAR:
         if (decay) {
             node = ary_to_ptr(node);

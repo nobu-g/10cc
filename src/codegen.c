@@ -41,7 +41,7 @@ char *argreg(int r, int size) {
 void gen_var(Node *node) {
     switch (node->kind) {
     case ND_LVAR:
-        printf("  lea rax, [rbp-%d]\n", node->offset);
+        printf("  lea rax, [rbp-%d]\n", node->lvar->offset);
         break;
     case ND_GVAR:
         printf("  lea rax, %s\n", node->name);
@@ -211,14 +211,22 @@ void gen_func(Func *fn) {
     printf(".global %s\n", fn->name);
     printf("\n%s:\n", fn->name);
 
+    int offset = 0;
+    for (int i = 0; i < fn->lvars->len; i++) {
+        LVar *lvar = vec_get(fn->lvars->vals, i);
+        offset += lvar->type->size;
+        lvar->offset = offset;
+    }
+
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", get_offset(fn->lvars));  // allocate an area of local variables
+    printf("  sub rsp, %d\n", offset);  // allocate an area of local variables
 
     // push arguments to stack to treat them as local variables
     for (int i = 0; i < fn->args->len; i++) {
-        Node *arg = vec_get(fn->args, i);
+        LVar *arg = vec_get(fn->args, i);
+        assert(arg->offset, "The offset of argument missing\n");
         printf("  lea rax, [rbp-%d]\n", arg->offset);
         printf("  mov [rax], %s\n", argreg(i, arg->type->size));
     }

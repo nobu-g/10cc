@@ -7,7 +7,7 @@ Node null_stmt = {ND_NULL};  // NOP node
 void top_level();
 void func();
 Node *stmt();
-Node *declaration();
+LVar *declaration();
 Node *expr();
 Node *assign();
 Node *equality();
@@ -22,7 +22,7 @@ Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
-Node *new_node_lvar(Type *type, int offset);
+Node *new_node_lvar(LVar *lvar);
 Node *new_node_gvar(Type *type, char *name);
 Node *new_node_func_call(Token *tok, Vector *args);
 
@@ -64,7 +64,7 @@ void top_level() {
 
         Node *gvar = map_at(prog->gvars, tok->str);
         if (gvar) {
-            error("グローバル変数 %s はすでに宣言されています", tok->str);
+            error("Redeclaration of global variable '%s'", tok->str);
         } else {
             Node *node = new_node_gvar(type, tok->str);
             map_insert(prog->gvars, tok->str, node);
@@ -169,24 +169,28 @@ Node *stmt() {
 /*
  * declaration = T ident ("[" num? "]")?
  */
-Node *declaration() {
+LVar *declaration() {
     Type *type = read_type();
     Token *tok_ident = expect(TK_IDENT, NULL);
     if (map_at(fn->lvars, tok_ident->str)) {
-        error("Redefinition of '%s'", tok_ident->str);
+        error("Redeclaration of '%s'", tok_ident->str);  // FIXME: 同じ型なら何度でも宣言可能
     }
     if (consume(TK_RESERVED, "[")) {
         Token *token = consume(TK_NUM, NULL);
+        int array_size;
         if (token) {
-            type = ary_of(type, token->val);
+            array_size = token->val;
         } else {
-            type = ary_of(type, 0);  // tentatively, array length is 0
+            array_size = 0;  // tentatively, array length is 0
         }
         expect(TK_RESERVED, "]");
+        type = ary_of(type, array_size);
     }
-    Node *node = new_node_lvar(type, get_offset(fn->lvars) + type->size);
-    map_insert(fn->lvars, tok_ident->str, node);
-    return node;
+    LVar *lvar = calloc(1, sizeof(LVar));
+    lvar->name = tok_ident->str;
+    lvar->type = type;
+    map_insert(fn->lvars, lvar->name, lvar);
+    return lvar;
 }
 
 /**
@@ -340,7 +344,7 @@ Node *primary() {
         }
 
         // variable reference
-        Node *lvar = map_at(fn->lvars, tok->str);
+        LVar *lvar = map_at(fn->lvars, tok->str);
         if (!lvar) {
             Node *gvar = map_at(prog->gvars, tok->str);
             if (!gvar) {
@@ -348,7 +352,7 @@ Node *primary() {
             }
             return new_node_gvar(gvar->type, gvar->name);
         }
-        return new_node_lvar(lvar->type, lvar->offset);
+        return new_node_lvar(lvar);
     }
 
     return new_node_num(expect(TK_NUM, NULL)->val);
@@ -386,10 +390,9 @@ Node *new_node_func_call(Token *tok, Vector *args) {
     return node;
 }
 
-Node *new_node_lvar(Type *type, int offset) {
+Node *new_node_lvar(LVar *lvar) {
     Node *node = new_node(ND_LVAR);
-    node->type = type;
-    node->offset = offset;
+    node->lvar = lvar;
     return node;
 }
 
@@ -405,18 +408,6 @@ Node *new_node_num(int val) {
     node->val = val;
     node->type = int_ty();
     return node;
-}
-
-/**
- * lvars を参照してこれまで確保されたスタック領域の総和を計算
- */
-int get_offset(Map *lvars) {
-    int offset = 0;
-    for (int i = 0; i < lvars->len; i++) {
-        Node *lvar = vec_get(lvars->vals, i);
-        offset += lvar->type->size;
-    }
-    return offset;
 }
 
 Type *new_ty(int ty, int size) {

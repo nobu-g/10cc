@@ -64,6 +64,12 @@ struct Type {
     int array_size;  // 配列の要素数
 };
 
+typedef struct LVar {
+    char *name;
+    Type *type;
+    int offset;
+} LVar;
+
 typedef enum {
     ND_ADD,        // +
     ND_SUB,        // -
@@ -110,19 +116,19 @@ struct Node {
     // used for block
     Vector *stmts;  // Vector<Node *>
 
-    // used for function
+    // used for function call
     Vector *args;  // Vector<Node *>
 
     char *name;  // used only if kind in (ND_FUNC, ND_GVAR)
     int val;     // used only if kind=ND_NUM
     Type *type;  // used only if node is expr
-    int offset;  // used only if kind=ND_LVAR
+    LVar *lvar;  // used only if kind=ND_LVAR
 };
 
 typedef struct {
     char *name;      // 関数の名前
-    Map *lvars;      // ローカル変数(args含む) (Map<char *, Node *>)
-    Vector *args;    // 引数 (Vector<Node *>)
+    Map *lvars;      // ローカル変数(args含む) (Map<char *, LVar *>)
+    Vector *args;    // 引数 (Vector<LVar *>)
     Node *body;      // 実装
     Type *ret_type;  // 戻り値の型
 } Func;
@@ -149,7 +155,6 @@ bool at_eof();
  * parse.c
  */
 Program *parse();
-int get_offset(Map *lvars);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);

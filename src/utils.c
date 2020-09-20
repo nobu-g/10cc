@@ -121,7 +121,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             }
             break;
         case ND_LVAR:
-            fprintf(stderr, "LVAR(ty: %d, offset: %d)\n", node->type->ty, node->offset);
+            fprintf(stderr, "LVAR(ty: %d, name: %s)\n", node->type->ty, node->lvar->name);
             break;
         case ND_GVAR:
             fprintf(stderr, "GVAR(ty: %d, name: %s)\n", node->type->ty, node->name);
