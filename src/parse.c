@@ -295,19 +295,17 @@ Node *unary() {
     } else if (consume(TK_RESERVED, "*")) {
         return new_node_uniop(ND_DEREF, unary());
     } else if (consume(TK_RESERVED, "sizeof")) {
-        Node *node;
         if (consume(TK_RESERVED, "(")) {
+            Node *node;
             if (at_typename()) {
-                node = new_node(ND_NULL);
-                node->type = read_type();
+                node = new_node_num(read_type()->size);
             } else {
-                node = expr();
+                node = new_node_uniop(ND_SIZEOF, expr());
             }
             expect(TK_RESERVED, ")");
-        } else {
-            node = unary();
+            return node;
         }
-        return new_node_uniop(ND_SIZEOF, node);
+        return new_node_uniop(ND_SIZEOF, unary());
     } else {
         return postfix();
     }
