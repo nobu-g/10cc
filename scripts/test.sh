@@ -82,3 +82,4 @@ assert 4 "int main() {int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; in
 assert 2 "int main() {char a; char b; char c; char d; a = 1; b = 2; c = 3; d = 4; char *p; p = &d + 2; return *p;}"
 assert 3 "int main() {char arr[4]; return &arr[3] - &arr[0];}"
 assert 3 "int main() {int arr[4]; return &arr[3] - &arr[0];}"
+assert 2 "int main() {int a; int a; a = 2; int a; return a;}"

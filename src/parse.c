@@ -61,12 +61,13 @@ void top_level() {
             type = ary_of(type, expect(TK_NUM, NULL)->val);
             expect(TK_RESERVED, "]");
         }
-
         GVar *gvar = map_at(prog->gvars, tok->str);
         if (gvar) {
-            error("Redeclaration of global variable '%s'", tok->str);
+            if (!same_type(type, gvar->type)) {
+                error_at(token->loc, "Redeclaration of '%s' with a different type", tok->str);
+            }
         } else {
-            GVar *gvar = calloc(1, sizeof(GVar));
+            gvar = calloc(1, sizeof(GVar));
             gvar->name = tok->str;
             gvar->type = type;
             map_insert(prog->gvars, gvar->name, gvar);
@@ -173,25 +174,28 @@ Node *stmt() {
  */
 LVar *declaration() {
     Type *type = read_type();
-    Token *tok_ident = expect(TK_IDENT, NULL);
-    if (map_at(fn->lvars, tok_ident->str)) {
-        error("Redeclaration of '%s'", tok_ident->str);  // FIXME: 同じ型なら何度でも宣言可能
+    Token *tok = expect(TK_IDENT, NULL);
+    if (!tok) {
+        error_at(token->loc, "Invalid identifier");
     }
+
     if (consume(TK_RESERVED, "[")) {
-        Token *token = consume(TK_NUM, NULL);
-        int array_size;
-        if (token) {
-            array_size = token->val;
-        } else {
-            array_size = 0;  // tentatively, array length is 0
-        }
+        Token *tok_num = consume(TK_NUM, NULL);
+        int array_size = tok_num ? tok_num->val : 0;  // tentatively, array size is 0 when omitted
         expect(TK_RESERVED, "]");
         type = ary_of(type, array_size);
     }
-    LVar *lvar = calloc(1, sizeof(LVar));
-    lvar->name = tok_ident->str;
-    lvar->type = type;
-    map_insert(fn->lvars, lvar->name, lvar);
+    LVar *lvar = map_at(fn->lvars, tok->str);
+    if (lvar) {
+        if (!same_type(type, lvar->type)) {
+            error_at(token->loc, "Redeclaration of '%s' with a different type", tok->str);
+        }
+    } else {
+        lvar = calloc(1, sizeof(LVar));
+        lvar->name = tok->str;
+        lvar->type = type;
+        map_insert(fn->lvars, lvar->name, lvar);
+    }
     return lvar;
 }
 
@@ -350,7 +354,7 @@ Node *primary() {
         if (!lvar) {
             GVar *gvar = map_at(prog->gvars, tok->str);
             if (!gvar) {
-                error("undefined variable: '%s'", tok->str);
+                error_at(token->loc, "undefined variable: '%s'", tok->str);
             }
             return new_node_gvar(gvar);
         }

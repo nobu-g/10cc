@@ -33,21 +33,6 @@ Node *scale_ptr(int op, Node *base, Type *type) {
     return new_node_binop(op, base, size);
 }
 
-bool same_type(Type *x, Type *y) {
-    if (x->ty != y->ty) {
-        return false;
-    }
-
-    switch (x->ty) {
-    case PTR:
-        return same_type(x->ptr_to, y->ptr_to);
-    case ARRAY:
-        return x->array_size == y->array_size && same_type(x->ptr_to, y->ptr_to);
-    default:
-        return true;
-    }
-}
-
 Node *ary_to_ptr(Node *base) {
     if (base->type->ty != ARRAY) {
         return base;

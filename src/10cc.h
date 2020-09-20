@@ -59,7 +59,7 @@ typedef struct Type Type;
 
 struct Type {
     enum { INT, CHAR, PTR, ARRAY } ty;
-    int size;                           // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
+    int size;  // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
     int array_size;  // number of array elements
 };
@@ -185,3 +185,4 @@ void error_at(char *loc, char *fmt, ...);
 void assert(bool cond, char *fmt, ...);
 void draw_node_tree(Node *node, int depth, char *prefix);
 void draw_ast();
+bool same_type(Type *x, Type *y);

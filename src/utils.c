@@ -121,10 +121,10 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             }
             break;
         case ND_LVAR:
-            fprintf(stderr, "LVAR(ty: %d, name: %s)\n", node->type->ty, node->lvar->name);
+            fprintf(stderr, "LVAR(ty: %d, name: %s)\n", node->lvar->type->ty, node->lvar->name);
             break;
         case ND_GVAR:
-            fprintf(stderr, "GVAR(ty: %d, name: %s)\n", node->type->ty, node->gvar->name);
+            fprintf(stderr, "GVAR(ty: %d, name: %s)\n", node->gvar->type->ty, node->gvar->name);
             break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);
@@ -162,5 +162,20 @@ void draw_ast(Program *prog) {
         fprintf(stderr, ")\n");
         draw_node_tree(fn->body, 1, "");
         fprintf(stderr, "\n");
+    }
+}
+
+bool same_type(Type *x, Type *y) {
+    if (x->ty != y->ty) {
+        return false;
+    }
+
+    switch (x->ty) {
+    case PTR:
+        return same_type(x->ptr_to, y->ptr_to);
+    case ARRAY:
+        return x->array_size == y->array_size && same_type(x->ptr_to, y->ptr_to);
+    default:
+        return true;
     }
 }
