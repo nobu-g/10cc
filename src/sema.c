@@ -115,6 +115,7 @@ Node *do_walk(Node *node, bool decay) {
 
         if (node->lhs->type->ty == PTR) {
             node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->type);
+            node->rhs->type = int_ty();
             node->type = node->lhs->type;
         } else {
             node->type = int_ty();
@@ -132,7 +133,7 @@ Node *do_walk(Node *node, bool decay) {
                 assert(same_type(lty, rty), "Incompatible pointer");
                 node = scale_ptr(ND_DIV, node, lty);
             } else {
-                node = scale_ptr(ND_MUL, node->rhs, lty);
+                node->rhs = scale_ptr(ND_MUL, node->rhs, lty);
             }
             node->type = lty;
         } else {
