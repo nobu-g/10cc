@@ -29,11 +29,8 @@ void check_referable(Node *node) {
 }
 
 Node *scale_ptr(int op, Node *base, Type *type) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = op;
-    node->lhs = base;
-    node->rhs = new_node_num(type->ptr_to->size);
-    return node;
+    Node *size = new_node_num(type->ptr_to->size);
+    return new_node_binop(op, base, size);
 }
 
 bool same_type(Type *x, Type *y) {
@@ -55,12 +52,9 @@ Node *ary_to_ptr(Node *base) {
     if (base->type->ty != ARRAY) {
         return base;
     }
-
     // &(base[0])
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_ADDR;
+    Node *node = new_node_uniop(ND_ADDR, base);
     node->type = ptr_to(base->type->ptr_to);
-    node->lhs = base;
     return node;
 }
 
@@ -137,9 +131,7 @@ Node *do_walk(Node *node, bool decay) {
             }
             node->type = lty;
         } else {
-            if (rty->ty == PTR) {
-                error("Invalid operands: %d and %d", lty->ty, rty->ty);
-            }
+            assert(rty->ty != PTR, "Invalid operands: %d and %d", lty->ty, rty->ty);
             node->type = int_ty();
         }
         return node;

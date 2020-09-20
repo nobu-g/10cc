@@ -153,4 +153,10 @@ Token *expect(TokenKind kind, char *str) {
     return tok;
 }
 
-bool at_eof() { return peek(TK_EOF, NULL); }
+bool at_typename() {
+    return peek(TK_RESERVED, "int") || peek(TK_RESERVED, "char");
+}
+
+bool at_eof() {
+    return peek(TK_EOF, NULL);
+}

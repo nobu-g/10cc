@@ -19,6 +19,7 @@ Node *postfix();
 Node *primary();
 
 Node *new_node(NodeKind kind);
+Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(Type *type, int offset);
@@ -151,7 +152,7 @@ Node *stmt() {
         expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
-    } else if (peek(TK_RESERVED, "int") || peek(TK_RESERVED, "char")) {
+    } else if (at_typename()) {
         declaration();
         node = &null_stmt;
     } else if (consume(TK_RESERVED, ";")) {
@@ -279,12 +280,12 @@ Node *unary() {
     } else if (consume(TK_RESERVED, "-")) {
         return new_node_binop(ND_SUB, new_node_num(0), unary());
     } else if (consume(TK_RESERVED, "&")) {
-        return new_node_binop(ND_ADDR, unary(), NULL);
+        return new_node_uniop(ND_ADDR, unary());
     } else if (consume(TK_RESERVED, "*")) {
-        return new_node_binop(ND_DEREF, unary(), NULL);
+        return new_node_uniop(ND_DEREF, unary());
     } else if (consume(TK_RESERVED, "sizeof")) {
         // TODO: accept typename
-        return new_node_binop(ND_SIZEOF, unary(), NULL);
+        return new_node_uniop(ND_SIZEOF, unary());
     } else {
         return postfix();
     }
@@ -298,11 +299,12 @@ Node *postfix() {
     Node *node = primary();
 
     while (true) {
+        // x[y] -> *(x + y)
         if (consume(TK_RESERVED, "[")) {
             Node *sbsc = expr();
             expect(TK_RESERVED, "]");
             Node *sum = new_node_binop(ND_ADD, node, sbsc);
-            node = new_node_binop(ND_DEREF, sum, NULL);
+            node = new_node_uniop(ND_DEREF, sum);
         } else {
             return node;
         }
@@ -356,6 +358,12 @@ Node *primary() {
 Node *new_node(NodeKind kind) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
+    return node;
+}
+
+Node *new_node_uniop(NodeKind kind, Node *lhs) {
+    Node *node = new_node(kind);
+    node->lhs = lhs;
     return node;
 }
 

@@ -142,6 +142,7 @@ void tokenize();
 Token *peek(TokenKind kind, char *str);
 Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
+bool at_typename();
 bool at_eof();
 
 /*
@@ -149,6 +150,8 @@ bool at_eof();
  */
 Program *parse();
 int get_offset(Map *lvars);
+Node *new_node_uniop(NodeKind kind, Node *lhs);
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Type *ptr_to(Type *base);
 Type *int_ty();
