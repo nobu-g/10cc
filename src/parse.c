@@ -221,9 +221,8 @@ Node *equality() {
         node = new_node_binop(ND_EQ, node, relational());
     } else if (consume(TK_RESERVED, "!=")) {
         node = new_node_binop(ND_NE, node, relational());
-    } else {
-        return node;
     }
+    return node;
 }
 
 /**
@@ -369,7 +368,6 @@ Node *primary() {
     }
     // immediate value
     return new_node_num(expect(TK_NUM, NULL)->val);
-    ;
 }
 
 Node *new_node(NodeKind kind) {

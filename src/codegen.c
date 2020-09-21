@@ -171,6 +171,8 @@ void gen(Node *node) {
         }
         printf("  push %s\n", reg(8));
         return;
+    default:
+        break;
     }
 
     gen(node->lhs);
@@ -213,6 +215,8 @@ void gen(Node *node) {
         printf("  cqo\n");
         printf("  idiv rdi\n");
         break;
+    default:
+        error("Unknown node kind: %d", node->kind);
     }
     printf("  push rax\n");
 }
