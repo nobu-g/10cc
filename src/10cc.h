@@ -184,6 +184,5 @@ void gen_x86_64(Program *prog);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void assert(bool cond, char *fmt, ...);
-void draw_node_tree(Node *node, int depth, char *prefix);
 void draw_ast();
 bool same_type(Type *x, Type *y);

@@ -33,6 +33,9 @@ Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
 Type *read_type();
 
+/**
+ * program = top_level* EOF
+ */
 Program *parse() {
     prog = calloc(1, sizeof(Program));
     prog->fns = map_create();
@@ -44,14 +47,11 @@ Program *parse() {
 }
 
 /**
- * program = (func|gvar)*
+ * top_level = T IDENT (func | ("[" NUM "]")? ";")
  */
 void top_level() {
     Type *type = read_type();
-    Token *tok = consume(TK_IDENT, NULL);
-    if (!tok) {
-        error_at(token->loc, "Invalid identifier");
-    }
+    Token *tok = expect(TK_IDENT, NULL);
     if (consume(TK_RESERVED, "(")) {
         // function
         func(tok->str, type);
@@ -75,7 +75,9 @@ void top_level() {
         expect(TK_RESERVED, ";");
     }
 }
-
+/**
+ * func = (declaration ("," declaration)*)? ")" "{" stmt* "}"
+ */
 void func(char *name, Type *ret_type) {
     /**
      * "int f(int a, int b) {}" の "(" まで読み終えた
@@ -107,7 +109,8 @@ void func(char *name, Type *ret_type) {
  *      | "while" "(" expr ")" stmt
  *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *      | declaration ";"
- *      | expr? ";"
+ *      | ";"
+ *      | expr ";"
  */
 Node *stmt() {
     Node *node;
@@ -163,22 +166,16 @@ Node *stmt() {
     } else {
         node = expr();
     }
-    if (!consume(TK_RESERVED, ";")) {
-        error_at(token->loc, "';' expected ");
-    }
+    expect(TK_RESERVED, ";");
     return node;
 }
 
 /*
- * declaration = T ident ("[" num? "]")?
+ * declaration = T IDENT ("[" NUM? "]")?
  */
 LVar *declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
-    if (!tok) {
-        error_at(token->loc, "Invalid identifier");
-    }
-
     if (consume(TK_RESERVED, "[")) {
         Token *tok_num = consume(TK_NUM, NULL);
         int array_size = tok_num ? tok_num->val : 0;  // tentatively, array size is 0 when omitted
@@ -332,13 +329,13 @@ Node *postfix() {
 }
 
 /**
- * primary = "(" expr ")"              // parenthesis
- *         | ident ("(" args ")")      // function call
- *         | ident                     // variable reference
- *         | num                       // immediate value
+ * primary = "(" expr ")"                       // parenthesis
+ *         | IDENT "(" (expr ("," expr)*)? ")"  // function call
+ *         | IDENT                              // variable reference
+ *         | NUM                                // immediate value
  */
 Node *primary() {
-    // "(" expr ")"
+    // parenthesis
     if (consume(TK_RESERVED, "(")) {
         Node *node = expr();
         expect(TK_RESERVED, ")");
@@ -370,7 +367,7 @@ Node *primary() {
         }
         return new_node_lvar(lvar);
     }
-
+    // immediate value
     return new_node_num(expect(TK_NUM, NULL)->val);
     ;
 }
