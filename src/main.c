@@ -11,10 +11,10 @@ int main(int argc, char **argv) {
     user_input = argv[1];
     tokenize();
     Program *prog = parse();
+    sema(prog);
 #if DEBUG <= 2
     draw_ast(prog);
 #endif
-    sema(prog);
     gen_x86_64(prog);
     return 0;
 }

@@ -26,7 +26,7 @@ Node *new_node_lvar(LVar *lvar);
 Node *new_node_gvar(GVar *gvar);
 Node *new_node_func_call(Token *tok, Vector *args);
 
-Type *new_ty(TypeKind kind, int size);
+Type *new_ty(TypeKind kind, int size, char *repr);
 Type *int_ty();
 Type *char_ty();
 Type *ptr_to(Type *base);
@@ -64,7 +64,8 @@ void top_level() {
         GVar *gvar = map_at(prog->gvars, tok->str);
         if (gvar) {
             if (!same_type(type, gvar->type)) {
-                error_at(token->loc, "Redefinition of '%s' with a different type", tok->str);
+                error_at(token->loc,
+                "Redefinition of '%s' with a different type: '%s' vs '%s'", tok->str, type->str, gvar->type->str);
             }
         } else {
             gvar = calloc(1, sizeof(GVar));
@@ -185,7 +186,8 @@ LVar *declaration() {
     LVar *lvar = map_at(fn->lvars, tok->str);
     if (lvar) {
         if (!same_type(type, lvar->type)) {
-            error_at(token->loc, "Redefinition of '%s' with a different type", tok->str);
+            error_at(token->loc,
+            "Redefinition of '%s' with a different type: '%s' vs '%s'", tok->str, type->str, lvar->type->str);
         }
     } else {
         lvar = calloc(1, sizeof(LVar));
@@ -419,25 +421,33 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Type *new_ty(TypeKind kind, int size) {
-    Type *ret = calloc(1, sizeof(Type));
-    ret->kind = kind;
-    ret->size = size;
-    return ret;
+Type *new_ty(TypeKind kind, int size, char *repr) {
+    Type *type = calloc(1, sizeof(Type));
+    type->kind = kind;
+    type->size = size;
+    type->str = repr;
+    return type;
 }
 
-Type *int_ty() { return new_ty(TY_INT, 4); }
+Type *int_ty() { return new_ty(TY_INT, 4, "int"); }
 
-Type *char_ty() { return new_ty(TY_CHAR, 1); }
+Type *char_ty() { return new_ty(TY_CHAR, 1, "char"); }
 
 Type *ptr_to(Type *dest) {
-    Type *type = new_ty(TY_PTR, 8);
+    char repr[256] = {};
+    assert(dest->kind != TY_ARRAY, "A pointer never points to an array");
+    char *s = dest->kind == TY_PTR ? "" : " ";
+    sprintf(repr, "%s%s*", dest->str, s);
+    Type *type = new_ty(TY_PTR, 8, repr);
     type->ptr_to = dest;
     return type;
 }
 
 Type *ary_of(Type *base, int size) {
-    Type *type = new_ty(TY_ARRAY, base->size * size);
+    char repr[256] = {};
+    char *s = (base->kind == TY_ARRAY || base->kind == TY_PTR) ? "" : " ";
+    sprintf(repr, "%s%s[%d]", base->str, s, size);
+    Type *type = new_ty(TY_ARRAY, base->size * size, repr);
     type->ptr_to = base;
     type->array_size = size;
     return type;

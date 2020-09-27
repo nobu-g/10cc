@@ -121,10 +121,10 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             }
             break;
         case ND_LVAR:
-            fprintf(stderr, "LVAR(type: %d, name: %s)\n", node->lvar->type->kind, node->lvar->name);
+            fprintf(stderr, "LVAR(type: %s, name: %s)\n", node->lvar->type->str, node->lvar->name);
             break;
         case ND_GVAR:
-            fprintf(stderr, "GVAR(type: %d, name: %s)\n", node->gvar->type->kind, node->gvar->name);
+            fprintf(stderr, "GVAR(type: %s, name: %s)\n", node->gvar->type->str, node->gvar->name);
             break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);

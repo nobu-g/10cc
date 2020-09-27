@@ -68,8 +68,9 @@ typedef enum {
 struct Type {
     TypeKind kind;
     int size;  // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
-    struct Type *ptr_to;
+    Type *ptr_to;
     int array_size;  // number of array elements
+    char *str;  // string which represents this type
 };
 
 typedef struct LVar {

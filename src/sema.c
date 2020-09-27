@@ -20,12 +20,12 @@
 
 void check_integer(Node *node) {
     TypeKind kind = node->type->kind;
-    assert(kind == TY_INT || kind == TY_CHAR, "Not an integer");
+    assert(kind == TY_INT || kind == TY_CHAR, "Not an integer type: '%s'", node->type->str);
 }
 
 void check_referable(Node *node) {
     NodeKind kind = node->kind;
-    assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF, "Not referable");
+    assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF, "Not a referable type: '%s", node->type->str);
 }
 
 Node *scale_ptr(int op, Node *base, Type *type) {
@@ -108,14 +108,14 @@ Node *do_walk(Node *node, bool decay) {
 
         if (lty->kind == TY_PTR) {
             if (rty->kind == TY_PTR) {
-                assert(same_type(lty, rty), "Incompatible pointer");
+                assert(same_type(lty, rty), "Incompatible pointer: '%s' vs '%s'", lty->str, rty->str);
                 node = scale_ptr(ND_DIV, node, lty);
             } else {
                 node->rhs = scale_ptr(ND_MUL, node->rhs, lty);
             }
             node->type = lty;
         } else {
-            assert(rty->kind != TY_PTR, "Invalid operands: %d and %d", lty->kind, rty->kind);
+            assert(rty->kind != TY_PTR, "Invalid operands: '%s' and '%s'", lty->str, rty->str);
             node->type = int_ty();
         }
         return node;
@@ -144,7 +144,7 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     case ND_DEREF:
         node->lhs = walk(node->lhs);
-        assert(node->lhs->type->kind == TY_PTR, "Operand must be a pointer");
+        assert(node->lhs->type->kind == TY_PTR, "Operand must be a pointer, but got '%s'", node->lhs->type->str);
         node->type = node->lhs->type->ptr_to;
         return node;
     case ND_RETURN:
@@ -154,7 +154,8 @@ Node *do_walk(Node *node, bool decay) {
         for (int i = 0; i < node->args->len; i++) {
             Node *arg = walk(vec_get(node->args, i));
             Type *type_expected = ((LVar *)vec_get(node->func->args, i))->type;
-            assert(same_type(arg->type, type_expected), "Argument type mismatch");
+            assert(same_type(arg->type, type_expected),
+            "Argument type mismatch: '%s' vs '%s'", arg->type->str, type_expected->str);
             vec_set(node->args, i, arg);
         }
         node->type = node->func->ret_type;
