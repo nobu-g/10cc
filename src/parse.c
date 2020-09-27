@@ -64,7 +64,7 @@ void top_level() {
         GVar *gvar = map_at(prog->gvars, tok->str);
         if (gvar) {
             if (!same_type(type, gvar->type)) {
-                error_at(token->loc, "Redeclaration of '%s' with a different type", tok->str);
+                error_at(token->loc, "Redefinition of '%s' with a different type", tok->str);
             }
         } else {
             gvar = calloc(1, sizeof(GVar));
@@ -185,7 +185,7 @@ LVar *declaration() {
     LVar *lvar = map_at(fn->lvars, tok->str);
     if (lvar) {
         if (!same_type(type, lvar->type)) {
-            error_at(token->loc, "Redeclaration of '%s' with a different type", tok->str);
+            error_at(token->loc, "Redefinition of '%s' with a different type", tok->str);
         }
     } else {
         lvar = calloc(1, sizeof(LVar));
