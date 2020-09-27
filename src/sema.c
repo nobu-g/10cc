@@ -19,8 +19,8 @@
 // - Reject bad assignments, such as `1=2+3`.
 
 void check_integer(Node *node) {
-    int ty = node->type->ty;
-    assert(ty == INT || ty == CHAR, "Not an integer");
+    TypeKind kind = node->type->kind;
+    assert(kind == TY_INT || kind == TY_CHAR, "Not an integer");
 }
 
 void check_referable(Node *node) {
@@ -34,7 +34,7 @@ Node *scale_ptr(int op, Node *base, Type *type) {
 }
 
 Node *ary_to_ptr(Node *base) {
-    if (base->type->ty != ARRAY) {
+    if (base->type->kind != TY_ARRAY) {
         return base;
     }
     // &(base[0])
@@ -84,14 +84,14 @@ Node *do_walk(Node *node, bool decay) {
     case ND_ADD:
         node->lhs = walk(node->lhs);
         node->rhs = walk(node->rhs);
-        if (node->rhs->type->ty == PTR) {
+        if (node->rhs->type->kind == TY_PTR) {
             Node *tmp = node->lhs;
             node->lhs = node->rhs;
             node->rhs = tmp;
         }
         check_integer(node->rhs);
 
-        if (node->lhs->type->ty == PTR) {
+        if (node->lhs->type->kind == TY_PTR) {
             node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->type);
             node->rhs->type = int_ty();
             node->type = node->lhs->type;
@@ -106,8 +106,8 @@ Node *do_walk(Node *node, bool decay) {
         Type *lty = node->lhs->type;
         Type *rty = node->rhs->type;
 
-        if (lty->ty == PTR) {
-            if (rty->ty == PTR) {
+        if (lty->kind == TY_PTR) {
+            if (rty->kind == TY_PTR) {
                 assert(same_type(lty, rty), "Incompatible pointer");
                 node = scale_ptr(ND_DIV, node, lty);
             } else {
@@ -115,7 +115,7 @@ Node *do_walk(Node *node, bool decay) {
             }
             node->type = lty;
         } else {
-            assert(rty->ty != PTR, "Invalid operands: %d and %d", lty->ty, rty->ty);
+            assert(rty->kind != TY_PTR, "Invalid operands: %d and %d", lty->kind, rty->kind);
             node->type = int_ty();
         }
         return node;
@@ -144,7 +144,7 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     case ND_DEREF:
         node->lhs = walk(node->lhs);
-        assert(node->lhs->type->ty == PTR, "Operand must be a pointer");
+        assert(node->lhs->type->kind == TY_PTR, "Operand must be a pointer");
         node->type = node->lhs->type->ptr_to;
         return node;
     case ND_RETURN:

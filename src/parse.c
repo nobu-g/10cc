@@ -26,7 +26,7 @@ Node *new_node_lvar(LVar *lvar);
 Node *new_node_gvar(GVar *gvar);
 Node *new_node_func_call(Token *tok, Vector *args);
 
-Type *new_ty(int ty, int size);
+Type *new_ty(TypeKind kind, int size);
 Type *int_ty();
 Type *char_ty();
 Type *ptr_to(Type *base);
@@ -419,25 +419,25 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Type *new_ty(int ty, int size) {
+Type *new_ty(TypeKind kind, int size) {
     Type *ret = calloc(1, sizeof(Type));
-    ret->ty = ty;
+    ret->kind = kind;
     ret->size = size;
     return ret;
 }
 
-Type *int_ty() { return new_ty(INT, 4); }
+Type *int_ty() { return new_ty(TY_INT, 4); }
 
-Type *char_ty() { return new_ty(CHAR, 1); }
+Type *char_ty() { return new_ty(TY_CHAR, 1); }
 
 Type *ptr_to(Type *dest) {
-    Type *type = new_ty(PTR, 8);
+    Type *type = new_ty(TY_PTR, 8);
     type->ptr_to = dest;
     return type;
 }
 
 Type *ary_of(Type *base, int size) {
-    Type *type = new_ty(ARRAY, base->size * size);
+    Type *type = new_ty(TY_ARRAY, base->size * size);
     type->ptr_to = base;
     type->array_size = size;
     return type;

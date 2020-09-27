@@ -14,6 +14,11 @@
 // 6: NONE
 #define DEBUG 6
 
+typedef struct Token Token;
+typedef struct Node Node;
+typedef struct Type Type;
+typedef struct Func Func;
+
 /*
  * container.c
  */
@@ -45,8 +50,6 @@ typedef enum {
     TK_EOF,       // end of file
 } TokenKind;
 
-typedef struct Token Token;
-
 struct Token {
     TokenKind kind;
     Token *next;
@@ -55,10 +58,15 @@ struct Token {
     char *loc;
 };
 
-typedef struct Type Type;
+typedef enum {
+    TY_INT,
+    TY_CHAR,
+    TY_PTR,
+    TY_ARRAY,
+} TypeKind;
 
 struct Type {
-    enum { INT, CHAR, PTR, ARRAY } ty;
+    TypeKind kind;
     int size;  // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
     struct Type *ptr_to;
     int array_size;  // number of array elements
@@ -99,9 +107,6 @@ typedef enum {
     ND_SIZEOF,     // sizeof
     ND_NULL        // NOP
 } NodeKind;
-
-typedef struct Node Node;
-typedef struct Func Func;
 
 struct Node {
     NodeKind kind;
