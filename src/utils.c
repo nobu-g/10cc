@@ -151,13 +151,15 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
 }
 
 void draw_ast(Program *prog) {
-    for (int i = 0; i < prog->fns->len; i++) {
-        Func *fn = vec_get(prog->fns->vals, i);
-        fprintf(stderr, "%s(\n", fn->name);
+    for (int i = 0; i < prog->funcs->len; i++) {
+        Func *fn = vec_get(prog->funcs->vals, i);
+        fprintf(stderr, "%s(", fn->name);
         for (int j = 0; j < fn->args->len; j++) {
-            char prefix[256] = {'\0'};
-            sprintf(prefix, "arg%d", j);
-            draw_node_tree(vec_get(fn->args, j), 1, prefix);
+            LVar *arg = vec_get(fn->args, j);
+            if (j > 0) {
+                fprintf(stderr, ", ");
+            }
+            fprintf(stderr, "%s %s", arg->type->str, arg->name);
         }
         fprintf(stderr, ")\n");
         draw_node_tree(fn->body, 1, "");

@@ -29,8 +29,8 @@ void gen_x86_64(Program *prog) {
     // text segment
     printf("\n");
     printf(".text\n");
-    for (int i = 0; i < prog->fns->len; i++) {
-        gen_func(vec_get(prog->fns->vals, i));
+    for (int i = 0; i < prog->funcs->len; i++) {
+        gen_func(vec_get(prog->funcs->vals, i));
     }
 }
 

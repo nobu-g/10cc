@@ -1,13 +1,16 @@
 #include "10cc.h"
 
 Program *prog;               // The program
-Func *fn;                    // The function being parsed
+Func *func;                  // The function being parsed
 Node null_stmt = {ND_NULL};  // NOP node
 
 void top_level();
-void func();
+LVar *param_declaration();
+void declaration();
+void add_current_func();
+LVar *add_lvar(Type *type, char *name);
+GVar *add_gvar(Type *type, char *name);
 Node *stmt();
-LVar *declaration();
 Node *expr();
 Node *assign();
 Node *equality();
@@ -32,13 +35,14 @@ Type *char_ty();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
 Type *read_type();
+Type *read_array(Type *base);
 
 /**
  * program = top_level* EOF
  */
 Program *parse() {
     prog = calloc(1, sizeof(Program));
-    prog->fns = map_create();
+    prog->funcs = map_create();
     prog->gvars = map_create();
     while (!at_eof()) {
         top_level();
@@ -47,60 +51,139 @@ Program *parse() {
 }
 
 /**
- * top_level = T IDENT (func | ("[" NUM "]")? ";")
+ * top_level = T IDENT (
+ *             "(" (param_declaration ("," param_declaration)*)? ")" (";" | "{" stmt* "}")
+ *             | ("[" NUM? "]")* ";"
+ *           )
  */
 void top_level() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (consume(TK_RESERVED, "(")) {
-        // function
-        func(tok->str, type);
+        // args を読む前に func を作っておかないと lvars の参照に失敗する
+        func = calloc(1, sizeof(Func));
+        func->name = tok->str;
+        func->lvars = map_create();
+        func->args = vec_create();
+        func->ret_type = type;
+        while (!consume(TK_RESERVED, ")")) {
+            if (func->args->len > 0) {
+                expect(TK_RESERVED, ",");
+            }
+            vec_push(func->args, param_declaration());
+        }
+
+        add_current_func();
+
+        if (consume(TK_RESERVED, ";")) {
+            // prototype declaration
+            func->body = NULL;
+            return;
+        }
+
+        // function definition
+        expect(TK_RESERVED, "{");
+        if (((Func *)map_at(prog->funcs, func->name))->body != NULL) {
+            error_at(token->loc, "Redefinition of function: '%s'", func->name);
+        }
+        func->body = new_node(ND_BLOCK);
+        func->body->stmts = vec_create();
+        while (!consume(TK_RESERVED, "}")) {
+            vec_push(func->body->stmts, stmt());
+        }
     } else {
         // global variable
-        if (consume(TK_RESERVED, "[")) {
-            type = ary_of(type, expect(TK_NUM, NULL)->val);
-            expect(TK_RESERVED, "]");
-        }
-        GVar *gvar = map_at(prog->gvars, tok->str);
-        if (gvar) {
-            if (!same_type(type, gvar->type)) {
-                error_at(token->loc,
-                "Redefinition of '%s' with a different type: '%s' vs '%s'", tok->str, type->str, gvar->type->str);
-            }
-        } else {
-            gvar = calloc(1, sizeof(GVar));
-            gvar->name = tok->str;
-            gvar->type = type;
-            map_insert(prog->gvars, gvar->name, gvar);
-        }
+        type = read_array(type);
         expect(TK_RESERVED, ";");
+        add_gvar(type, tok->str);
     }
 }
-/**
- * func = (declaration ("," declaration)*)? ")" "{" stmt* "}"
+
+/*
+ * param_declaration = T IDENT ("[" NUM? "]")*
  */
-void func(char *name, Type *ret_type) {
-    /**
-     * "int f(int a, int b) {}" の "(" まで読み終えた
-     */
-    fn = calloc(1, sizeof(Func));
-    fn->name = name;
-    fn->lvars = map_create();
-    fn->args = vec_create();
-    fn->ret_type = ret_type;
-    while (!consume(TK_RESERVED, ")")) {
-        if (fn->args->len > 0) {
-            expect(TK_RESERVED, ",");
+LVar *param_declaration() {
+    Type *type = read_type();
+    Token *tok = expect(TK_IDENT, NULL);
+    type = read_array(type);
+    return add_lvar(type, tok->str);
+}
+
+/*
+ * declaration = T IDENT ("[" NUM? "]")* ";"
+ */
+void declaration() {
+    Type *type = read_type();
+    Token *tok = expect(TK_IDENT, NULL);
+    type = read_array(type);
+    add_lvar(type, tok->str);
+    expect(TK_RESERVED, ";");
+}
+
+void add_current_func() {
+    Func *fn = map_at(prog->funcs, func->name);
+    if (fn) {
+        bool is_compatible = same_type(func->ret_type, fn->ret_type) && (func->args->len == fn->args->len);
+        if (is_compatible) {
+            for (int i = 0; i < func->args->len; i++) {
+                LVar *arg = vec_get(func->args, i);
+                LVar *fn_arg = vec_get(fn->args, i);
+                if (!same_type(arg->type, fn_arg->type)) {
+                    is_compatible = false;
+                }
+            }
         }
-        vec_push(fn->args, declaration());
+        if (!is_compatible) {
+            error_at(token->loc, "Incompatible function declaration");
+        }
+        if (fn->body) {
+            return;  // when function definition preceeds function declaration
+        }
     }
-    map_insert(prog->fns, fn->name, fn);
-    expect(TK_RESERVED, "{");
-    fn->body = new_node(ND_BLOCK);
-    fn->body->stmts = vec_create();
-    while (!consume(TK_RESERVED, "}")) {
-        vec_push(fn->body->stmts, stmt());
+    map_insert(prog->funcs, func->name, func);
+}
+
+LVar *add_lvar(Type *type, char *name) {
+    LVar *lvar = map_at(func->lvars, name);
+    if (lvar) {
+        if (!same_type(type, lvar->type)) {
+            error_at(token->loc,
+            "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str, lvar->type->str);
+        }
+    } else {
+        lvar = calloc(1, sizeof(LVar));
+        lvar->name = name;
+        lvar->type = type;
+        map_insert(func->lvars, name, lvar);
     }
+    return lvar;
+}
+
+GVar *add_gvar(Type *type, char *name) {
+    GVar *gvar = map_at(prog->gvars, name);
+    if (gvar) {
+        if (!same_type(type, gvar->type)) {
+            error_at(token->loc,
+            "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str, gvar->type->str);
+        }
+    } else {
+        gvar = calloc(1, sizeof(GVar));
+        gvar->name = name;
+        gvar->type = type;
+        map_insert(prog->gvars, name, gvar);
+    }
+    return gvar;
+}
+
+Type *read_array(Type *base) {
+    Type *type = base;
+    while (consume(TK_RESERVED, "[")) {
+        Token *tok = consume(TK_NUM, NULL);
+        int array_size = tok ? tok->val : -1;  // tentatively, array size is -1 when omitted
+        expect(TK_RESERVED, "]");
+        type = ary_of(type, array_size);
+    }
+    return type;
 }
 
 /**
@@ -161,7 +244,7 @@ Node *stmt() {
         return node;
     } else if (at_typename()) {
         declaration();
-        node = &null_stmt;
+        return &null_stmt;
     } else if (consume(TK_RESERVED, ";")) {
         return &null_stmt;
     } else {
@@ -169,33 +252,6 @@ Node *stmt() {
     }
     expect(TK_RESERVED, ";");
     return node;
-}
-
-/*
- * declaration = T IDENT ("[" NUM? "]")?
- */
-LVar *declaration() {
-    Type *type = read_type();
-    Token *tok = expect(TK_IDENT, NULL);
-    if (consume(TK_RESERVED, "[")) {
-        Token *tok_num = consume(TK_NUM, NULL);
-        int array_size = tok_num ? tok_num->val : 0;  // tentatively, array size is 0 when omitted
-        expect(TK_RESERVED, "]");
-        type = ary_of(type, array_size);
-    }
-    LVar *lvar = map_at(fn->lvars, tok->str);
-    if (lvar) {
-        if (!same_type(type, lvar->type)) {
-            error_at(token->loc,
-            "Redefinition of '%s' with a different type: '%s' vs '%s'", tok->str, type->str, lvar->type->str);
-        }
-    } else {
-        lvar = calloc(1, sizeof(LVar));
-        lvar->name = tok->str;
-        lvar->type = type;
-        map_insert(fn->lvars, lvar->name, lvar);
-    }
-    return lvar;
 }
 
 /**
@@ -233,16 +289,15 @@ Node *equality() {
 Node *relational() {
     Node *node = add();
     if (consume(TK_RESERVED, "<=")) {
-        return new_node_binop(ND_LE, node, add());
+        node = new_node_binop(ND_LE, node, add());
     } else if (consume(TK_RESERVED, ">=")) {
-        return new_node_binop(ND_LE, add(), node);
+        node = new_node_binop(ND_LE, add(), node);
     } else if (consume(TK_RESERVED, "<")) {
-        return new_node_binop(ND_LT, node, add());
+        node = new_node_binop(ND_LT, node, add());
     } else if (consume(TK_RESERVED, ">")) {
-        return new_node_binop(ND_LT, add(), node);
-    } else {
-        return node;
+        node = new_node_binop(ND_LT, add(), node);
     }
+    return node;
 }
 
 /**
@@ -358,7 +413,7 @@ Node *primary() {
         }
 
         // variable reference
-        LVar *lvar = map_at(fn->lvars, tok->str);
+        LVar *lvar = map_at(func->lvars, tok->str);
         if (!lvar) {
             GVar *gvar = map_at(prog->gvars, tok->str);
             if (!gvar) {
@@ -393,7 +448,7 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs) {
 
 Node *new_node_func_call(Token *tok, Vector *args) {
     Node *node = new_node(ND_FUNC_CALL);
-    Func *fn = map_at(prog->fns, tok->str);
+    Func *fn = map_at(prog->funcs, tok->str);
     if (!fn) {
         error_at(tok->loc, "Undefined function: '%s'", tok->str);
     }

@@ -147,7 +147,7 @@ struct Func {
 };
 
 typedef struct {
-    Map *fns;    // function definitions (Map<char *, Func *>)
+    Map *funcs;    // function definitions (Map<char *, Func *>)
     Map *gvars;  // global variable declarations (Map<char *, GVar *>)
 } Program;
 

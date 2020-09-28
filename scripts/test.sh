@@ -6,10 +6,11 @@ assert() {
   expected="$1"
   input="$2"
 
+  set -e
   ./build/10cc "$input" > tests/tmp.s
   cc -c tests/tmp.s -o tests/tmp.o
-  cc -c tests/helper.c -o tests/helper.o
-  cc -static -o tests/tmp tests/tmp.o tests/helper.o
+  cc -static -o tests/tmp tests/tmp.o
+  set +e
   ./tests/tmp
   actual="$?"
 
