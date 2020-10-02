@@ -89,3 +89,4 @@ assert 2 "int main() {char a; char b; char c; char d; a = 1; b = 2; c = 3; d = 4
 assert 3 "int main() {char arr[4]; return &arr[3] - &arr[0];}"
 assert 3 "int main() {int arr[4]; return &arr[3] - &arr[0];}"
 assert 2 "int main() {int a; int a; a = 2; int a; return a;}"
+assert 109 "int main() {int a; a = 1; char b; b = 9; if (1) {int b; b = 32; a = 100; } if(1) {char b; b = 5;} return a + b;}"

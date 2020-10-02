@@ -1,13 +1,13 @@
 #include "10cc.h"
 
 Program *prog;               // The program
-Func *func;                  // The function being parsed
+Scope *scope;                // Current scope
 Node null_stmt = {ND_NULL};  // NOP node
 
 void top_level();
 LVar *param_declaration();
 void declaration();
-void add_current_func();
+void add_func(Func *func);
 LVar *add_lvar(Type *type, char *name);
 GVar *add_gvar(Type *type, char *name);
 Node *stmt();
@@ -37,6 +37,25 @@ Type *ary_of(Type *base, int size);
 Type *read_type();
 Type *read_array(Type *base);
 
+Scope *new_scope() {
+    Scope *sc = calloc(1, sizeof(Scope));
+    sc->parent = NULL;
+    sc->children = vec_create();
+    sc->lvars = map_create();
+    return sc;
+}
+
+void enter_scope() {
+    Scope *sc = new_scope();
+    sc->parent = scope;
+    vec_push(scope->children, sc);
+    scope = sc;
+}
+
+void leave_scope() {
+    scope = scope->parent;
+}
+
 /**
  * program = top_level* EOF
  */
@@ -60,10 +79,11 @@ void top_level() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (consume(TK_RESERVED, "(")) {
-        // args を読む前に func を作っておかないと lvars の参照に失敗する
-        func = calloc(1, sizeof(Func));
+        // args を読む前に func を作っておかないと lvars の参照に失敗する // scope 作ったからなんとかなりそう
+        Func *func = calloc(1, sizeof(Func));
+        scope = new_scope();
+        func->scope = scope;
         func->name = tok->str;
-        func->lvars = map_create();
         func->args = vec_create();
         func->ret_type = type;
         while (!consume(TK_RESERVED, ")")) {
@@ -73,7 +93,7 @@ void top_level() {
             vec_push(func->args, param_declaration());
         }
 
-        add_current_func();
+        add_func(func);
 
         if (consume(TK_RESERVED, ";")) {
             // prototype declaration
@@ -120,7 +140,7 @@ void declaration() {
     expect(TK_RESERVED, ";");
 }
 
-void add_current_func() {
+void add_func(Func *func) {
     Func *fn = map_at(prog->funcs, func->name);
     if (fn) {
         bool is_compatible = same_type(func->ret_type, fn->ret_type) && (func->args->len == fn->args->len);
@@ -143,8 +163,26 @@ void add_current_func() {
     map_insert(prog->funcs, func->name, func);
 }
 
+LVar *find_lvar(char *name) {
+    LVar *lvar;
+    Scope *sc = scope;
+    while (sc) {
+        lvar = map_at(sc->lvars, name);
+        if (lvar) {
+            break;
+        }
+        sc = sc->parent;
+    }
+    return lvar;
+}
+
+GVar *find_gvar(char *name) {
+    GVar *gvar = map_at(prog->gvars, name);
+    return gvar;
+}
+
 LVar *add_lvar(Type *type, char *name) {
-    LVar *lvar = map_at(func->lvars, name);
+    LVar *lvar = map_at(scope->lvars, name);  // search within current scope
     if (lvar) {
         if (!same_type(type, lvar->type)) {
             error_at(token->loc,
@@ -154,7 +192,7 @@ LVar *add_lvar(Type *type, char *name) {
         lvar = calloc(1, sizeof(LVar));
         lvar->name = name;
         lvar->type = type;
-        map_insert(func->lvars, name, lvar);
+        map_insert(scope->lvars, name, lvar);
     }
     return lvar;
 }
@@ -201,9 +239,11 @@ Node *stmt() {
     if (consume(TK_RESERVED, "{")) {
         node = new_node(ND_BLOCK);
         node->stmts = vec_create();
+        enter_scope();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, stmt());
         }
+        leave_scope();
         return node;
     } else if (consume(TK_RESERVED, "return")) {
         node = new_node(ND_RETURN);
@@ -228,6 +268,7 @@ Node *stmt() {
     } else if (consume(TK_RESERVED, "for")) {
         Node *node = new_node(ND_FOR);
         expect(TK_RESERVED, "(");
+        enter_scope();
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr();
             expect(TK_RESERVED, ";");
@@ -241,6 +282,7 @@ Node *stmt() {
         }
         expect(TK_RESERVED, ")");
         node->then = stmt();
+        leave_scope();
         return node;
     } else if (at_typename()) {
         declaration();
@@ -413,9 +455,9 @@ Node *primary() {
         }
 
         // variable reference
-        LVar *lvar = map_at(func->lvars, tok->str);
+        LVar *lvar = find_lvar(tok->str);
         if (!lvar) {
-            GVar *gvar = map_at(prog->gvars, tok->str);
+            GVar *gvar = find_gvar(tok->str);
             if (!gvar) {
                 error_at(token->loc, "undefined variable: '%s'", tok->str);
             }

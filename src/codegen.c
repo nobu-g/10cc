@@ -12,6 +12,7 @@ int label_cnt = 0;
 
 void gen_gvar(GVar *gvar);
 void gen_func(Func *fn);
+int assign_lvar_offset(Scope *scope, int offset);
 void gen(Node *node);
 void gen_val(Node *node);
 char *reg(int size);
@@ -43,13 +44,7 @@ void gen_func(Func *fn) {
     printf(".global %s\n", fn->name);
     printf("\n%s:\n", fn->name);
 
-    int offset = 0;
-    for (int i = 0; i < fn->lvars->len; i++) {
-        LVar *lvar = vec_get(fn->lvars->vals, i);
-        offset += lvar->type->size;
-        lvar->offset = offset;
-    }
-
+    int offset = assign_lvar_offset(fn->scope, 0);
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
@@ -69,6 +64,19 @@ void gen_func(Func *fn) {
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
+}
+
+int assign_lvar_offset(Scope *scope, int offset) {
+    for (int i = 0; i < scope->lvars->len; i++) {
+        LVar *lvar = vec_get(scope->lvars->vals, i);
+        offset += lvar->type->size;
+        lvar->offset = offset;
+    }
+    // DFS
+    for (int i = 0; i < scope->children->len; i++) {
+        offset = assign_lvar_offset(vec_get(scope->children, i), offset);
+    }
+    return offset;
 }
 
 // スタックから入力を受け取り、nodeが表す演算の結果をスタックに戻す処理を生成する

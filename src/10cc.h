@@ -17,6 +17,7 @@
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct Type Type;
+typedef struct Scope Scope;
 typedef struct Func Func;
 
 /*
@@ -73,13 +74,13 @@ struct Type {
     char *str;  // string which represents this type
 };
 
-typedef struct LVar {
+typedef struct {
     char *name;
     Type *type;
     int offset;  // offset from RBP
 } LVar;
 
-typedef struct GVar {
+typedef struct {
     char *name;
     Type *type;
 } GVar;
@@ -138,16 +139,22 @@ struct Node {
     GVar *gvar;  // used only if kind = ND_GVAR
 };
 
+struct Scope {
+    Scope *parent;
+    Vector *children;  // Vector<Scope *e>
+    Map *lvars;  // local variables in this scope (Map<char *, LVar *>)
+};
+
 struct Func {
     char *name;      // name of function
-    Map *lvars;      // local variables (including arguments) (Map<char *, LVar *>)
     Vector *args;    // arguments (Vector<LVar *>)
     Node *body;      // implementation
     Type *ret_type;  // type of return value
+    Scope *scope;    // root scope of local variables
 };
 
 typedef struct {
-    Map *funcs;    // function definitions (Map<char *, Func *>)
+    Map *funcs;  // function definitions (Map<char *, Func *>)
     Map *gvars;  // global variable declarations (Map<char *, GVar *>)
 } Program;
 
