@@ -6,11 +6,9 @@ assert() {
   expected="$1"
   input="$2"
 
-  set -e
   ./build/10cc "$input" > tests/tmp.s
   cc -c tests/tmp.s -o tests/tmp.o
   cc -static -o tests/tmp tests/tmp.o
-  set +e
   ./tests/tmp
   actual="$?"
 
@@ -90,3 +88,4 @@ assert 3 "int main() {char arr[4]; return &arr[3] - &arr[0];}"
 assert 3 "int main() {int arr[4]; return &arr[3] - &arr[0];}"
 assert 2 "int main() {int a; int a; a = 2; int a; return a;}"
 assert 109 "int main() {int a; a = 1; char b; b = 9; if (1) {int b; b = 32; a = 100; } if(1) {char b; b = 5;} return a + b;}"
+assert 24 "int fact(int m); int main() {return fact(4);} int fact(int n) {if (n < 2) return 1; else return n * fact(n-1);}"

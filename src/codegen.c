@@ -41,8 +41,8 @@ void gen_gvar(GVar *gvar) {
 }
 
 void gen_func(Func *fn) {
-    printf(".global %s\n", fn->name);
-    printf("\n%s:\n", fn->name);
+    printf("\n.global %s\n", fn->name);
+    printf("%s:\n", fn->name);
 
     int offset = assign_lvar_offset(fn->scope, 0);
     // prologue
