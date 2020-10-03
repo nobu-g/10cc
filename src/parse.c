@@ -7,7 +7,7 @@ Node null_stmt = {ND_NULL};  // NOP node
 void top_level();
 LVar *param_declaration();
 void declaration();
-void add_func(Func *func);
+Func *add_func(Type *ret_type, char *name, Vector *args);
 LVar *add_lvar(Type *type, char *name);
 GVar *add_gvar(Type *type, char *name);
 Node *stmt();
@@ -52,9 +52,7 @@ void enter_scope() {
     scope = sc;
 }
 
-void leave_scope() {
-    scope = scope->parent;
-}
+void leave_scope() { scope = scope->parent; }
 
 /**
  * program = top_level* EOF
@@ -79,21 +77,18 @@ void top_level() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (consume(TK_RESERVED, "(")) {
-        // args を読む前に func を作っておかないと lvars の参照に失敗する // scope 作ったからなんとかなりそう
-        Func *func = calloc(1, sizeof(Func));
+        // function declaration/definintion
         scope = new_scope();
-        func->scope = scope;
-        func->name = tok->str;
-        func->args = vec_create();
-        func->ret_type = type;
+        // parse arguments
+        Vector *args = vec_create();
         while (!consume(TK_RESERVED, ")")) {
-            if (func->args->len > 0) {
+            if (args->len > 0) {
                 expect(TK_RESERVED, ",");
             }
-            vec_push(func->args, param_declaration());
+            vec_push(args, param_declaration());
         }
 
-        add_func(func);
+        Func *func = add_func(type, tok->str, args);
 
         if (consume(TK_RESERVED, ";")) {
             // prototype declaration
@@ -103,7 +98,7 @@ void top_level() {
 
         // function definition
         expect(TK_RESERVED, "{");
-        if (((Func *)map_at(prog->funcs, func->name))->body != NULL) {
+        if (func->body) {
             error_at(token->loc, "Redefinition of function: '%s'", func->name);
         }
         func->body = new_node(ND_BLOCK);
@@ -140,13 +135,13 @@ void declaration() {
     expect(TK_RESERVED, ";");
 }
 
-void add_func(Func *func) {
-    Func *fn = map_at(prog->funcs, func->name);
+Func *add_func(Type *ret_type, char *name, Vector *args) {
+    Func *fn = map_at(prog->funcs, name);
     if (fn) {
-        bool is_compatible = same_type(func->ret_type, fn->ret_type) && (func->args->len == fn->args->len);
+        bool is_compatible = same_type(ret_type, fn->ret_type) && (args->len == fn->args->len);
         if (is_compatible) {
-            for (int i = 0; i < func->args->len; i++) {
-                LVar *arg = vec_get(func->args, i);
+            for (int i = 0; i < args->len; i++) {
+                LVar *arg = vec_get(args, i);
                 LVar *fn_arg = vec_get(fn->args, i);
                 if (!same_type(arg->type, fn_arg->type)) {
                     is_compatible = false;
@@ -157,10 +152,16 @@ void add_func(Func *func) {
             error_at(token->loc, "Incompatible function declaration");
         }
         if (fn->body) {
-            return;  // when function definition preceeds function declaration
+            return fn;  // when function definition preceeds function declaration
         }
     }
-    map_insert(prog->funcs, func->name, func);
+    fn = calloc(1, sizeof(Func));
+    fn->name = name;
+    fn->args = args;
+    fn->ret_type = ret_type;
+    fn->scope = scope;
+    map_insert(prog->funcs, name, fn);
+    return fn;
 }
 
 LVar *find_lvar(char *name) {
@@ -185,8 +186,8 @@ LVar *add_lvar(Type *type, char *name) {
     LVar *lvar = map_at(scope->lvars, name);  // search within current scope
     if (lvar) {
         if (!same_type(type, lvar->type)) {
-            error_at(token->loc,
-            "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str, lvar->type->str);
+            error_at(token->loc, "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str,
+                     lvar->type->str);
         }
     } else {
         lvar = calloc(1, sizeof(LVar));
@@ -201,8 +202,8 @@ GVar *add_gvar(Type *type, char *name) {
     GVar *gvar = map_at(prog->gvars, name);
     if (gvar) {
         if (!same_type(type, gvar->type)) {
-            error_at(token->loc,
-            "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str, gvar->type->str);
+            error_at(token->loc, "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str,
+                     gvar->type->str);
         }
     } else {
         gvar = calloc(1, sizeof(GVar));
@@ -492,7 +493,7 @@ Node *new_node_func_call(Token *tok, Vector *args) {
     Node *node = new_node(ND_FUNC_CALL);
     Func *fn = map_at(prog->funcs, tok->str);
     if (!fn) {
-        error_at(tok->loc, "Undefined function: '%s'", tok->str);
+        error_at(tok->loc, "Undeclared function: '%s'", tok->str);
     }
     node->func = fn;
     node->args = args;
