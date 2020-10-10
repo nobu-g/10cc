@@ -120,11 +120,8 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
                 draw_node_tree(vec_get(node->args, i), depth + 1, prefix);
             }
             break;
-        case ND_LVAR:
-            fprintf(stderr, "LVAR(type: %s, name: %s)\n", node->lvar->type->str, node->lvar->name);
-            break;
-        case ND_GVAR:
-            fprintf(stderr, "GVAR(type: %s, name: %s)\n", node->gvar->type->str, node->gvar->name);
+        case ND_VARREF:
+            fprintf(stderr, "VARREF(type: %s, name: %s)\n", node->var->type->str, node->var->name);
             break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);
@@ -155,7 +152,7 @@ void draw_ast(Program *prog) {
         Func *fn = vec_get(prog->funcs->vals, i);
         fprintf(stderr, "%s(", fn->name);
         for (int j = 0; j < fn->args->len; j++) {
-            LVar *arg = vec_get(fn->args, j);
+            Var *arg = vec_get(fn->args, j);
             if (j > 0) {
                 fprintf(stderr, ", ");
             }

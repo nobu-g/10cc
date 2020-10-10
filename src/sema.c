@@ -25,7 +25,7 @@ void check_integer(Node *node) {
 
 void check_referable(Node *node) {
     NodeKind kind = node->kind;
-    assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF, "Not a referable type: '%s", node->type->str);
+    assert(kind == ND_VARREF || kind == ND_DEREF, "Not a referable type: '%s", node->type->str);
 }
 
 Node *scale_ptr(int op, Node *base, Type *type) {
@@ -156,7 +156,7 @@ Node *do_walk(Node *node, bool decay) {
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
             Node *arg = walk(vec_get(node->args, i));
-            Type *type_expected = ((LVar *)vec_get(node->func->args, i))->type;
+            Type *type_expected = ((Var *)vec_get(node->func->args, i))->type;
             assert(same_type(arg->type, type_expected),
             "Argument type mismatch: '%s' vs '%s'", arg->type->str, type_expected->str);
             vec_set(node->args, i, arg);
@@ -165,14 +165,8 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     case ND_SIZEOF:
         return new_node_num(walk_nodecay(node->lhs)->type->size);
-    case ND_LVAR:
-        node->type = node->lvar->type;
-        if (decay) {
-            node = ary_to_ptr(node);
-        }
-        return node;
-    case ND_GVAR:
-        node->type = node->gvar->type;
+    case ND_VARREF:
+        node->type = node->var->type;
         if (decay) {
             node = ary_to_ptr(node);
         }

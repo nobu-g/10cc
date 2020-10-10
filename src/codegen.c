@@ -10,11 +10,11 @@ char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 
 int label_cnt = 0;
 
-void gen_gvar(GVar *gvar);
+void gen_gvar(Var *gvar);
 void gen_func(Func *fn);
 int assign_lvar_offset(Scope *scope, int offset);
 void gen(Node *node);
-void gen_val(Node *node);
+void gen_lval(Node *node);
 char *reg(int size);
 char *argreg(int r, int size);
 
@@ -35,7 +35,7 @@ void gen_x86_64(Program *prog) {
     }
 }
 
-void gen_gvar(GVar *gvar) {
+void gen_gvar(Var *gvar) {
     printf("%s:\n", gvar->name);
     printf("  .zero %d\n", gvar->type->size);
 }
@@ -52,7 +52,7 @@ void gen_func(Func *fn) {
 
     // push arguments to stack to treat them as local variables
     for (int i = 0; i < fn->args->len; i++) {
-        LVar *arg = vec_get(fn->args, i);
+        Var *arg = vec_get(fn->args, i);
         assert(arg->offset, "The offset of argument missing\n");
         printf("  lea rax, [rbp-%d]\n", arg->offset);
         printf("  mov [rax], %s\n", argreg(i, arg->type->size));
@@ -68,7 +68,8 @@ void gen_func(Func *fn) {
 
 int assign_lvar_offset(Scope *scope, int offset) {
     for (int i = 0; i < scope->lvars->len; i++) {
-        LVar *lvar = vec_get(scope->lvars->vals, i);
+        Var *lvar = vec_get(scope->lvars->vals, i);
+        assert(lvar->is_local, "Scope contains global variable: '%s'", lvar->name);
         offset += lvar->type->size;
         lvar->offset = offset;
     }
@@ -96,9 +97,8 @@ void gen(Node *node) {
         printf("  call %s\n", node->func->name);
         printf("  push rax\n");
         return;
-    case ND_GVAR:
-    case ND_LVAR:
-        gen_val(node);
+    case ND_VARREF:
+        gen_lval(node);
         printf("  pop rax\n");                               // set rax to the address of the variable
         printf("  mov %s, [rax]\n", reg(node->type->size));  // raxの指す先にアクセスして中身をraxにコピー
         if (node->type->size == 1) {
@@ -107,7 +107,7 @@ void gen(Node *node) {
         printf("  push %s\n", reg(8));  // コピーしてきた値をスタックにpush
         return;
     case ND_ASSIGN:
-        gen_val(node->lhs);
+        gen_lval(node->lhs);
         gen(node->rhs);
         printf("  pop %s\n", reg(8));                             // rhs
         printf("  pop rax\n");                                    // lhs (address)
@@ -168,7 +168,7 @@ void gen(Node *node) {
         }
         return;
     case ND_ADDR:
-        gen_val(node->lhs);
+        gen_lval(node->lhs);
         return;
     case ND_DEREF:       // 右辺値参照
         gen(node->lhs);  // アドレスがスタックに積まれる
@@ -230,14 +230,14 @@ void gen(Node *node) {
 }
 
 // Push the address of the local/global variable represented by node
-void gen_val(Node *node) {
+void gen_lval(Node *node) {
     switch (node->kind) {
-    case ND_LVAR:
-        printf("  lea rax, [rbp-%d]\n", node->lvar->offset);
-        printf("  push rax\n");
-        break;
-    case ND_GVAR:
-        printf("  lea rax, %s\n", node->gvar->name);
+    case ND_VARREF:
+        if (node->var->is_local) {
+            printf("  lea rax, [rbp-%d]\n", node->var->offset);
+        } else {
+            printf("  lea rax, %s\n", node->var->name);
+        }
         printf("  push rax\n");
         break;
     case ND_DEREF:

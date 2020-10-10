@@ -5,11 +5,10 @@ Scope *scope;                // Current scope
 Node null_stmt = {ND_NULL};  // NOP node
 
 void top_level();
-LVar *param_declaration();
+Var *param_declaration();
 void declaration();
 Func *add_func(Type *ret_type, char *name, Vector *args);
-LVar *add_lvar(Type *type, char *name);
-GVar *add_gvar(Type *type, char *name);
+Var *add_var(Type *type, char *name, bool is_local);
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -25,8 +24,7 @@ Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
-Node *new_node_lvar(LVar *lvar);
-Node *new_node_gvar(GVar *gvar);
+Node *new_node_varref(Var *var);
 Node *new_node_func_call(Token *tok, Vector *args);
 
 Type *new_ty(TypeKind kind, int size, char *repr);
@@ -110,18 +108,18 @@ void top_level() {
         // global variable
         type = read_array(type);
         expect(TK_RESERVED, ";");
-        add_gvar(type, tok->str);
+        add_var(type, tok->str, false);
     }
 }
 
 /*
  * param_declaration = T IDENT ("[" NUM? "]")*
  */
-LVar *param_declaration() {
+Var *param_declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     type = read_array(type);
-    return add_lvar(type, tok->str);
+    return add_var(type, tok->str, true);
 }
 
 /*
@@ -131,7 +129,7 @@ void declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     type = read_array(type);
-    add_lvar(type, tok->str);
+    add_var(type, tok->str, true);
     expect(TK_RESERVED, ";");
 }
 
@@ -141,8 +139,8 @@ Func *add_func(Type *ret_type, char *name, Vector *args) {
         bool is_compatible = same_type(ret_type, fn->ret_type) && (args->len == fn->args->len);
         if (is_compatible) {
             for (int i = 0; i < args->len; i++) {
-                LVar *arg = vec_get(args, i);
-                LVar *fn_arg = vec_get(fn->args, i);
+                Var *arg = vec_get(args, i);
+                Var *fn_arg = vec_get(fn->args, i);
                 if (!same_type(arg->type, fn_arg->type)) {
                     is_compatible = false;
                 }
@@ -164,54 +162,41 @@ Func *add_func(Type *ret_type, char *name, Vector *args) {
     return fn;
 }
 
-LVar *find_lvar(char *name) {
-    LVar *lvar;
+Var *find_var(char *name) {
+    Var *var = NULL;
     Scope *sc = scope;
     while (sc) {
-        lvar = map_at(sc->lvars, name);
-        if (lvar) {
+        var = map_at(sc->lvars, name);
+        if (var) {
             break;
         }
         sc = sc->parent;
     }
-    return lvar;
+    if (!var) {
+        var = map_at(prog->gvars, name);
+    }
+    if (!var) {
+        error_at(token->loc, "Undefined variable: '%s'", name);
+    }
+    return var;
 }
 
-GVar *find_gvar(char *name) {
-    GVar *gvar = map_at(prog->gvars, name);
-    return gvar;
-}
-
-LVar *add_lvar(Type *type, char *name) {
-    LVar *lvar = map_at(scope->lvars, name);  // search within current scope
-    if (lvar) {
-        if (!same_type(type, lvar->type)) {
+Var *add_var(Type *type, char *name, bool is_local) {
+    Map *vars = is_local ? scope->lvars : prog->gvars;
+    Var *var = map_at(vars, name);
+    if (var) {
+        if (!same_type(type, var->type)) {
             error_at(token->loc, "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str,
-                     lvar->type->str);
+                     var->type->str);
         }
     } else {
-        lvar = calloc(1, sizeof(LVar));
-        lvar->name = name;
-        lvar->type = type;
-        map_insert(scope->lvars, name, lvar);
+        var = calloc(1, sizeof(Var));
+        var->is_local = is_local;
+        var->name = name;
+        var->type = type;
+        map_insert(vars, name, var);
     }
-    return lvar;
-}
-
-GVar *add_gvar(Type *type, char *name) {
-    GVar *gvar = map_at(prog->gvars, name);
-    if (gvar) {
-        if (!same_type(type, gvar->type)) {
-            error_at(token->loc, "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str,
-                     gvar->type->str);
-        }
-    } else {
-        gvar = calloc(1, sizeof(GVar));
-        gvar->name = name;
-        gvar->type = type;
-        map_insert(prog->gvars, name, gvar);
-    }
-    return gvar;
+    return var;
 }
 
 Type *read_array(Type *base) {
@@ -459,15 +444,8 @@ Node *primary() {
         }
 
         // variable reference
-        LVar *lvar = find_lvar(tok->str);
-        if (!lvar) {
-            GVar *gvar = find_gvar(tok->str);
-            if (!gvar) {
-                error_at(token->loc, "undefined variable: '%s'", tok->str);
-            }
-            return new_node_gvar(gvar);
-        }
-        return new_node_lvar(lvar);
+        Var *var = find_var(tok->str);
+        return new_node_varref(var);
     }
     // immediate value
     return new_node_num(expect(TK_NUM, NULL)->val);
@@ -503,15 +481,9 @@ Node *new_node_func_call(Token *tok, Vector *args) {
     return node;
 }
 
-Node *new_node_lvar(LVar *lvar) {
-    Node *node = new_node(ND_LVAR);
-    node->lvar = lvar;
-    return node;
-}
-
-Node *new_node_gvar(GVar *gvar) {
-    Node *node = new_node(ND_GVAR);
-    node->gvar = gvar;
+Node *new_node_varref(Var *var) {
+    Node *node = new_node(ND_VARREF);
+    node->var = var;
     return node;
 }
 

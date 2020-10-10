@@ -78,15 +78,11 @@ struct Type {
 };
 
 typedef struct {
+    bool is_local;
     char *name;
     Type *type;
     int offset;  // offset from RBP
-} LVar;
-
-typedef struct {
-    char *name;
-    Type *type;
-} GVar;
+} Var;
 
 typedef enum {
     ND_ADD,        // +
@@ -94,7 +90,7 @@ typedef enum {
     ND_MUL,        // *
     ND_DIV,        // /
     ND_EQ,         // ==
-    ND_NE,         // ==
+    ND_NE,         // !=
     ND_LE,         // <=
     ND_LT,         // <
     ND_ASSIGN,     // =
@@ -104,8 +100,7 @@ typedef enum {
     ND_FOR,        // for
     ND_BLOCK,      // block
     ND_FUNC_CALL,  // function call
-    ND_LVAR,       // local variable
-    ND_GVAR,       // global variable
+    ND_VARREF,     // variable reference
     ND_NUM,        // immediate value
     ND_ADDR,       // unary &
     ND_DEREF,      // unary *
@@ -138,19 +133,18 @@ struct Node {
 
     int val;     // used only if kind = ND_NUM
     Type *type;  // used only if node is expr
-    LVar *lvar;  // used only if kind = ND_LVAR
-    GVar *gvar;  // used only if kind = ND_GVAR
+    Var *var;    // used only if kind = ND_VARREF
 };
 
 struct Scope {
     Scope *parent;
     Vector *children;  // Vector<Scope *e>
-    Map *lvars;  // local variables in this scope (Map<char *, LVar *>)
+    Map *lvars;  // local variables in this scope (Map<char *, Var *>)
 };
 
 struct Func {
     char *name;      // name of function
-    Vector *args;    // arguments (Vector<LVar *>)
+    Vector *args;    // arguments (Vector<Var *>)
     Node *body;      // implementation
     Type *ret_type;  // type of return value
     Scope *scope;    // root scope of local variables
@@ -158,7 +152,7 @@ struct Func {
 
 typedef struct {
     Map *funcs;  // function definitions (Map<char *, Func *>)
-    Map *gvars;  // global variable declarations (Map<char *, GVar *>)
+    Map *gvars;  // global variable declarations (Map<char *, Var *>)
 } Program;
 
 /*
