@@ -38,7 +38,7 @@ void gen_x86_64(Program *prog) {
 void gen_gvar(Var *gvar) {
     assert(!(gvar->is_local), "Local variable: '%s' found in data segment", gvar->name);
     printf("%s:\n", gvar->name);
-    printf("  .zero %d\n", gvar->type->size);
+    printf("  .zero %zu\n", gvar->type->size);
 }
 
 void gen_func(Func *fn) {
