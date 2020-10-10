@@ -532,9 +532,8 @@ Type *int_ty() { return new_ty(TY_INT, 4, "int"); }
 Type *char_ty() { return new_ty(TY_CHAR, 1, "char"); }
 
 Type *ptr_to(Type *dest) {
-    char repr[256] = {};
-    assert(dest->kind != TY_ARRAY, "A pointer never points to an array");
-    char *s = dest->kind == TY_PTR ? "" : " ";
+    char *repr = calloc(256, sizeof(char));
+    char *s = (dest->kind == TY_ARRAY || dest->kind == TY_PTR) ? "" : " ";
     sprintf(repr, "%s%s*", dest->str, s);
     Type *type = new_ty(TY_PTR, 8, repr);
     type->ptr_to = dest;
@@ -542,7 +541,7 @@ Type *ptr_to(Type *dest) {
 }
 
 Type *ary_of(Type *base, int size) {
-    char repr[256] = {};
+    char *repr = calloc(256, sizeof(char));
     char *s = (base->kind == TY_ARRAY || base->kind == TY_PTR) ? "" : " ";
     sprintf(repr, "%s%s[%d]", base->str, s, size);
     Type *type = new_ty(TY_ARRAY, base->size * size, repr);
