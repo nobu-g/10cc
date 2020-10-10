@@ -25,7 +25,7 @@ Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_varref(Var *var);
-Node *new_node_func_call(Token *tok, Vector *args);
+Node *new_node_func_call(Func *func, Vector *args);
 
 Type *new_ty(TypeKind kind, int size, char *repr);
 Type *int_ty();
@@ -159,6 +159,14 @@ Func *add_func(Type *ret_type, char *name, Vector *args) {
     fn->ret_type = ret_type;
     fn->scope = scope;
     map_insert(prog->funcs, name, fn);
+    return fn;
+}
+
+Func *find_func(char *name) {
+    Func *fn = map_at(prog->funcs, name);
+    if (!fn) {
+        error_at(token->loc, "Undeclared function: '%s'", name);
+    }
     return fn;
 }
 
@@ -431,8 +439,9 @@ Node *primary() {
 
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
-        // function call
         if (consume(TK_RESERVED, "(")) {
+            // function call
+            Func *fn = find_func(tok->str);
             Vector *args = vec_create();
             while (!consume(TK_RESERVED, ")")) {
                 if (args->len > 0) {
@@ -440,7 +449,7 @@ Node *primary() {
                 }
                 vec_push(args, expr());
             }
-            return new_node_func_call(tok, args);
+            return new_node_func_call(fn, args);
         }
 
         // variable reference
@@ -470,13 +479,9 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs) {
     return node;
 }
 
-Node *new_node_func_call(Token *tok, Vector *args) {
+Node *new_node_func_call(Func *func, Vector *args) {
     Node *node = new_node(ND_FUNC_CALL);
-    Func *fn = map_at(prog->funcs, tok->str);
-    if (!fn) {
-        error_at(tok->loc, "Undeclared function: '%s'", tok->str);
-    }
-    node->func = fn;
+    node->func = func;
     node->args = args;
     return node;
 }
