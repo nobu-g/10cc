@@ -7,8 +7,10 @@ Node null_stmt = {ND_NULL};  // NOP node
 void top_level();
 Var *param_declaration();
 void declaration();
-Func *add_func(Type *ret_type, char *name, Vector *args);
-Var *add_var(Type *type, char *name, bool is_local);
+Type *read_array(Type *base);
+Func *new_func(Type *ret_type, char *name, Vector *args);
+Var *new_var(Type *type, char *name, bool is_local);
+
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -20,12 +22,15 @@ Node *unary();
 Node *postfix();
 Node *primary();
 
+Func *find_func(char *name);
+Var *find_var(char *name);
+
 Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
-Node *new_node_varref(Var *var);
 Node *new_node_func_call(Func *func, Vector *args);
+Node *new_node_varref(Var *var);
 
 Type *new_ty(TypeKind kind, int size, char *repr);
 Type *int_ty();
@@ -33,7 +38,6 @@ Type *char_ty();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
 Type *read_type();
-Type *read_array(Type *base);
 
 Scope *new_scope() {
     Scope *sc = calloc(1, sizeof(Scope));
@@ -86,7 +90,7 @@ void top_level() {
             vec_push(args, param_declaration());
         }
 
-        Func *func = add_func(type, tok->str, args);
+        Func *func = new_func(type, tok->str, args);
 
         if (consume(TK_RESERVED, ";")) {
             // prototype declaration
@@ -108,7 +112,7 @@ void top_level() {
         // global variable
         type = read_array(type);
         expect(TK_RESERVED, ";");
-        add_var(type, tok->str, false);
+        new_var(type, tok->str, false);
     }
 }
 
@@ -119,7 +123,7 @@ Var *param_declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     type = read_array(type);
-    return add_var(type, tok->str, true);
+    return new_var(type, tok->str, true);
 }
 
 /*
@@ -129,11 +133,25 @@ void declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     type = read_array(type);
-    add_var(type, tok->str, true);
+    new_var(type, tok->str, true);
     expect(TK_RESERVED, ";");
 }
 
-Func *add_func(Type *ret_type, char *name, Vector *args) {
+Type *read_array(Type *base) {
+    Vector *sizes = vec_create();
+    while (consume(TK_RESERVED, "[")) {
+        Token *tok = consume(TK_NUM, NULL);
+        vec_pushi(sizes, tok ? tok->val : -1);  // tentatively, array size is -1 when omitted
+        expect(TK_RESERVED, "]");
+    }
+    Type *type = base;
+    for (int i = sizes->len - 1; i >= 0; i--) {
+        type = ary_of(type, vec_geti(sizes, i));
+    }
+    return type;
+}
+
+Func *new_func(Type *ret_type, char *name, Vector *args) {
     Func *fn = map_at(prog->funcs, name);
     if (fn) {
         bool is_compatible = same_type(ret_type, fn->ret_type) && (args->len == fn->args->len);
@@ -162,34 +180,7 @@ Func *add_func(Type *ret_type, char *name, Vector *args) {
     return fn;
 }
 
-Func *find_func(char *name) {
-    Func *fn = map_at(prog->funcs, name);
-    if (!fn) {
-        error_at(token->loc, "Undeclared function: '%s'", name);
-    }
-    return fn;
-}
-
-Var *find_var(char *name) {
-    Var *var = NULL;
-    Scope *sc = scope;
-    while (sc) {
-        var = map_at(sc->lvars, name);
-        if (var) {
-            break;
-        }
-        sc = sc->parent;
-    }
-    if (!var) {
-        var = map_at(prog->gvars, name);
-    }
-    if (!var) {
-        error_at(token->loc, "Undefined variable: '%s'", name);
-    }
-    return var;
-}
-
-Var *add_var(Type *type, char *name, bool is_local) {
+Var *new_var(Type *type, char *name, bool is_local) {
     Map *vars = is_local ? scope->lvars : prog->gvars;
     Var *var = map_at(vars, name);
     if (var) {
@@ -205,20 +196,6 @@ Var *add_var(Type *type, char *name, bool is_local) {
         map_insert(vars, name, var);
     }
     return var;
-}
-
-Type *read_array(Type *base) {
-    Vector *sizes = vec_create();
-    while (consume(TK_RESERVED, "[")) {
-        Token *tok = consume(TK_NUM, NULL);
-        vec_pushi(sizes, tok ? tok->val : -1);  // tentatively, array size is -1 when omitted
-        expect(TK_RESERVED, "]");
-    }
-    Type *type = base;
-    for (int i = sizes->len - 1; i >= 0; i--) {
-        type = ary_of(type, vec_geti(sizes, i));
-    }
-    return type;
 }
 
 /**
@@ -458,6 +435,33 @@ Node *primary() {
     }
     // immediate value
     return new_node_num(expect(TK_NUM, NULL)->val);
+}
+
+Func *find_func(char *name) {
+    Func *fn = map_at(prog->funcs, name);
+    if (!fn) {
+        error_at(token->loc, "Undeclared function: '%s'", name);
+    }
+    return fn;
+}
+
+Var *find_var(char *name) {
+    Var *var = NULL;
+    Scope *sc = scope;
+    while (sc) {
+        var = map_at(sc->lvars, name);
+        if (var) {
+            break;
+        }
+        sc = sc->parent;
+    }
+    if (!var) {
+        var = map_at(prog->gvars, name);
+    }
+    if (!var) {
+        error_at(token->loc, "Undefined variable: '%s'", name);
+    }
+    return var;
 }
 
 Node *new_node(NodeKind kind) {
