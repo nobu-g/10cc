@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 // 0: TRACE
 // 1: DEBUG
@@ -31,7 +32,9 @@ typedef struct {
 
 Vector *vec_create();
 void vec_push(Vector *vec, void *elem);
+void vec_pushi(Vector *vec, int val);
 void *vec_get(Vector *vec, int index);
+int vec_geti(Vector *vec, int index);
 void *vec_set(Vector *vec, int index, void *elem);
 
 typedef struct {

@@ -146,6 +146,9 @@ Node *do_walk(Node *node, bool decay) {
         node->lhs = walk(node->lhs);
         assert(node->lhs->type->kind == TY_PTR, "Operand must be a pointer, but got '%s'", node->lhs->type->str);
         node->type = node->lhs->type->ptr_to;
+        if (decay) {
+            node = ary_to_ptr(node);
+        }
         return node;
     case ND_RETURN:
         node->lhs = walk(node->lhs);

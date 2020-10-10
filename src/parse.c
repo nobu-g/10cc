@@ -215,12 +215,15 @@ GVar *add_gvar(Type *type, char *name) {
 }
 
 Type *read_array(Type *base) {
-    Type *type = base;
+    Vector *sizes = vec_create();
     while (consume(TK_RESERVED, "[")) {
         Token *tok = consume(TK_NUM, NULL);
-        int array_size = tok ? tok->val : -1;  // tentatively, array size is -1 when omitted
+        vec_pushi(sizes, tok ? tok->val : -1);  // tentatively, array size is -1 when omitted
         expect(TK_RESERVED, "]");
-        type = ary_of(type, array_size);
+    }
+    Type *type = base;
+    for (int i = sizes->len - 1; i >= 0; i--) {
+        type = ary_of(type, vec_geti(sizes, i));
     }
     return type;
 }

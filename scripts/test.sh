@@ -89,3 +89,10 @@ assert 3 "int main() {int arr[4]; return &arr[3] - &arr[0];}"
 assert 2 "int main() {int a; int a; a = 2; int a; return a;}"
 assert 109 "int main() {int a; a = 1; char b; b = 9; if (1) {int b; b = 32; a = 100; } if(1) {char b; b = 5;} return a + b;}"
 assert 24 "int fact(int m); int main() {return fact(4);} int fact(int n) {if (n < 2) return 1; else return n * fact(n-1);}"
+assert 0 'int main() { int x[2][3]; int *y; y=x[0]; y[0]=0; return x[0][0]; }'
+assert 1 'int main() { int x[2][3]; int *y; y=x[0]; y[1]=1; return x[0][1]; }'
+assert 2 'int main() { int x[2][3]; int *y; y=x[0]; y[2]=2; return x[0][2]; }'
+assert 3 'int main() { int x[2][3]; int *y; y=x[1]; y[0]=3; return x[1][0]; }'
+assert 4 'int main() { int x[2][3]; int *y; y=x[1]; y[1]=4; return x[1][1]; }'
+assert 5 'int main() { int x[2][3]; int *y; y=x[1]; y[2]=5; return x[1][2]; }'
+assert 12 'int main() { int a[2][3]; return sizeof(*a); }'

@@ -25,12 +25,20 @@ void *vec_get(Vector *vec, int index) {
     return vec->data[index];
 }
 
+void vec_pushi(Vector *vec, int val) {
+    vec_push(vec, (void *)(intptr_t)val);
+}
+
 void *vec_set(Vector *vec, int index, void *elem) {
     if (index >= vec->len) {
         return NULL;
     }
     vec->data[index] = elem;
     return elem;
+}
+
+int vec_geti(Vector *vec, int index) {
+    return (intptr_t)(vec_get(vec, index));
 }
 
 Map *map_create() {
