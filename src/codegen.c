@@ -11,7 +11,7 @@ char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 int label_cnt = 0;
 
 void gen_gvar(Var *gvar);
-void gen_strl(StrLiteral* strl);
+void gen_strl(StrLiteral *strl);
 void gen_func(Func *fn);
 int assign_lvar_offset(Scope *scope, int offset);
 void gen(Node *node);
@@ -34,7 +34,10 @@ void gen_x86_64(Program *prog) {
     printf("\n");
     printf(".text\n");
     for (int i = 0; i < prog->funcs->len; i++) {
-        gen_func(vec_get(prog->funcs->vals, i));
+        Func *fn = vec_get(prog->funcs->vals, i);
+        if (fn->body) {
+            gen_func(fn);
+        }
     }
 }
 
@@ -44,7 +47,7 @@ void gen_gvar(Var *gvar) {
     printf("  .zero %zu\n", gvar->type->size);
 }
 
-void gen_strl(StrLiteral* strl) {
+void gen_strl(StrLiteral *strl) {
     printf("%s:\n", strl->label);
     printf("  .string \"%s\"\n", strl->str);
 }
@@ -104,6 +107,8 @@ void gen(Node *node) {
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
             gen(vec_get(node->args, i));
+        }
+        for (int i = node->args->len - 1; i >= 0 ; i--) {
             printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
         }
         printf("  call %s\n", node->func->name);
@@ -198,42 +203,42 @@ void gen(Node *node) {
     gen(node->lhs);
     gen(node->rhs);
 
-    printf("  pop rdi\n");  // rhs
+    printf("  pop r10\n");  // rhs
     printf("  pop rax\n");  // lhs
 
     switch (node->kind) {
     case ND_EQ:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp rax, r10\n");
         printf("  sete al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_NE:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp rax, r10\n");
         printf("  setne al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_LE:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp rax, r10\n");
         printf("  setle al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_LT:
-        printf("  cmp rax, rdi\n");
+        printf("  cmp rax, r10\n");
         printf("  setl al\n");
         printf("  movzb rax, al\n");
         break;
     case ND_ADD:
-        printf("  add rax, rdi\n");
+        printf("  add rax, r10\n");
         break;
     case ND_SUB:
-        printf("  sub rax, rdi\n");
+        printf("  sub rax, r10\n");
         break;
     case ND_MUL:
-        printf("  imul rax, rdi\n");
+        printf("  imul rax, r10\n");
         break;
     case ND_DIV:
         printf("  cqo\n");
-        printf("  idiv rdi\n");
+        printf("  idiv r10\n");
         break;
     default:
         error("Unknown node kind: %d", node->kind);

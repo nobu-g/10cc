@@ -160,8 +160,8 @@ Node *do_walk(Node *node, bool decay) {
         for (int i = 0; i < node->args->len; i++) {
             Node *arg = walk(vec_get(node->args, i));
             Type *type_expected = ((Var *)vec_get(node->func->args, i))->type;
-            assert(same_type(arg->type, type_expected),
-            "Argument type mismatch: '%s' vs '%s'", arg->type->str, type_expected->str);
+            assert(same_type(arg->type, type_expected), "Argument type mismatch: '%s' vs '%s'", arg->type->str,
+                   type_expected->str);
             vec_set(node->args, i, arg);
         }
         node->type = node->func->ret_type;
@@ -190,7 +190,9 @@ Node *do_walk(Node *node, bool decay) {
 void add_type(Program *prog) {
     for (int i = 0; i < prog->funcs->len; i++) {
         Func *fn = vec_get(prog->funcs->vals, i);
-        fn->body = walk(fn->body);
+        if (fn->body) {
+            fn->body = walk(fn->body);
+        }
     }
 }
 

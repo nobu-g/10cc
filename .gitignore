@@ -53,3 +53,4 @@ dkms.conf
 
 tmp*
 10cc
+test/test.c
