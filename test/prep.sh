@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 declare -A tests=(
-
   ["return 42;"]="42"
   ["return 1 + 1;"]="2"
   ["return (1 + 1) * 2;"]="4"

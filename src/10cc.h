@@ -175,7 +175,6 @@ extern char *user_input;
  * tokenize.c
  */
 extern Token *token;
-
 void tokenize();
 Token *peek(TokenKind kind, char *str);
 Token *consume(TokenKind kind, char *str);
