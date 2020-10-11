@@ -11,6 +11,7 @@ char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 int label_cnt = 0;
 
 void gen_gvar(Var *gvar);
+void gen_strl(StrLiteral* strl);
 void gen_func(Func *fn);
 int assign_lvar_offset(Scope *scope, int offset);
 void gen(Node *node);
@@ -26,7 +27,9 @@ void gen_x86_64(Program *prog) {
     for (int i = 0; i < prog->gvars->len; i++) {
         gen_gvar(vec_get(prog->gvars->vals, i));
     }
-
+    for (int i = 0; i < prog->strls->len; i++) {
+        gen_strl(vec_get(prog->strls->vals, i));
+    }
     // text segment
     printf("\n");
     printf(".text\n");
@@ -39,6 +42,11 @@ void gen_gvar(Var *gvar) {
     assert(!(gvar->is_local), "Local variable: '%s' found in data segment", gvar->name);
     printf("%s:\n", gvar->name);
     printf("  .zero %zu\n", gvar->type->size);
+}
+
+void gen_strl(StrLiteral* strl) {
+    printf("%s:\n", strl->label);
+    printf("  .string \"%s\"\n", strl->str);
 }
 
 void gen_func(Func *fn) {
@@ -89,6 +97,9 @@ void gen(Node *node) {
         return;
     case ND_NUM:
         printf("  push %d\n", node->val);
+        return;
+    case ND_STR:
+        gen_lval(node);
         return;
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
@@ -239,6 +250,10 @@ void gen_lval(Node *node) {
         } else {
             printf("  lea rax, %s\n", node->var->name);
         }
+        printf("  push rax\n");
+        break;
+    case ND_STR:
+        printf("  lea rax, %s\n", node->strl->label);
         printf("  push rax\n");
         break;
     case ND_DEREF:

@@ -174,6 +174,11 @@ Node *do_walk(Node *node, bool decay) {
             node = ary_to_ptr(node);
         }
         return node;
+    case ND_STR:
+        if (decay) {
+            node = ary_to_ptr(node);
+        }
+        return node;
     case ND_NUM:
     case ND_NULL:
         return node;
@@ -198,19 +203,15 @@ Type *new_ty(TypeKind kind, int size, char *repr) {
 }
 
 Type *ptr_to(Type *dest) {
-    char *repr = calloc(256, sizeof(char));
     char *s = (dest->kind == TY_ARRAY || dest->kind == TY_PTR) ? "" : " ";
-    sprintf(repr, "%s%s*", dest->str, s);
-    Type *type = new_ty(TY_PTR, 8, repr);
+    Type *type = new_ty(TY_PTR, 8, format("%s%s*", dest->str, s));
     type->ptr_to = dest;
     return type;
 }
 
 Type *ary_of(Type *base, int size) {
-    char *repr = calloc(256, sizeof(char));
     char *s = (base->kind == TY_ARRAY || base->kind == TY_PTR) ? "" : " ";
-    sprintf(repr, "%s%s[%d]", base->str, s, size);
-    Type *type = new_ty(TY_ARRAY, base->size * size, repr);
+    Type *type = new_ty(TY_ARRAY, base->size * size, format("%s%s[%d]", base->str, s, size));
     type->ptr_to = base;
     type->array_size = size;
     return type;

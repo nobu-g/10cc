@@ -51,6 +51,7 @@ typedef enum {
     TK_RESERVED,  // operators and reserved words
     TK_IDENT,     // identifier
     TK_NUM,       // number
+    TK_STR,       // string literal
     TK_EOF,       // end of file
 } TokenKind;
 
@@ -84,6 +85,11 @@ typedef struct {
     int offset;  // offset from RBP
 } Var;
 
+typedef struct {
+    char *label;
+    char *str;
+} StrLiteral;
+
 typedef enum {
     ND_ADD,        // +
     ND_SUB,        // -
@@ -101,6 +107,7 @@ typedef enum {
     ND_BLOCK,      // block
     ND_FUNC_CALL,  // function call
     ND_VARREF,     // variable reference
+    ND_STR,        // string literal
     ND_NUM,        // immediate value
     ND_ADDR,       // unary &
     ND_DEREF,      // unary *
@@ -134,6 +141,7 @@ struct Node {
     int val;     // used only if kind = ND_NUM
     Type *type;  // used only if node is expr
     Var *var;    // used only if kind = ND_VARREF
+    StrLiteral *strl;  // used only if kind = ND_STR
 };
 
 struct Scope {
@@ -153,6 +161,7 @@ struct Func {
 typedef struct {
     Map *funcs;  // function definitions (Map<char *, Func *>)
     Map *gvars;  // global variable declarations (Map<char *, Var *>)
+    Map *strls;  // string literals (Map<char *, StrLiteral *>)
 } Program;
 
 /*
@@ -194,6 +203,7 @@ void gen_x86_64(Program *prog);
 /*
  * utils.c
  */
+char *format(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void assert(bool cond, char *fmt, ...);

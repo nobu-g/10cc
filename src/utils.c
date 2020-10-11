@@ -1,5 +1,16 @@
 #include "10cc.h"
 
+// Takes a printf-style format string and returns a formatted string.
+char *format(char *fmt, ...) {
+    size_t size = 2048;
+    char *buff = calloc(size, sizeof(char));
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buff, sizeof(char) * size, fmt, ap);
+    va_end(ap);
+    return buff;
+}
+
 void error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -125,6 +136,9 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
             break;
         case ND_NUM:
             fprintf(stderr, "NUM(%d)\n", node->val);
+            break;
+        case ND_STR:
+            fprintf(stderr, "STR(\"%s\")\n", node->strl->str);
             break;
         case ND_ADDR:
             fprintf(stderr, "ADDR\n");

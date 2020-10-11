@@ -48,6 +48,20 @@ void tokenize() {
             continue;
         }
 
+        // read string literal
+        if (*p == '"') {
+            cur = new_token(TK_RESERVED, cur, p, 1);
+            int len = 0;
+            while (p[len + 1] && p[len + 1] != '"') {
+                len++;
+            }
+            cur = new_token(TK_STR, cur, p + 1, len);
+            p += len + 1;
+            cur = new_token(TK_RESERVED, cur, p, 1);
+            p++;
+            continue;
+        }
+
         error_at(p, "Failed to tokenize user input");
     }
 

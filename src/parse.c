@@ -3,6 +3,7 @@
 Program *prog;               // The program
 Scope *scope;                // Current scope
 Node null_stmt = {ND_NULL};  // NOP node
+int str_label_cnt = 1;
 
 void top_level();
 Var *param_declaration();
@@ -28,9 +29,10 @@ Var *find_var(char *name);
 Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
-Node *new_node_num(int val);
 Node *new_node_func_call(Func *func, Vector *args);
 Node *new_node_varref(Var *var);
+Node *new_node_string(char *str);
+Node *new_node_num(int val);
 
 Type *read_type();
 
@@ -58,6 +60,7 @@ Program *parse() {
     prog = calloc(1, sizeof(Program));
     prog->funcs = map_create();
     prog->gvars = map_create();
+    prog->strls = map_create();
     while (!at_eof()) {
         top_level();
     }
@@ -399,6 +402,7 @@ Node *postfix() {
  * primary = "(" expr ")"                       // parenthesis
  *         | IDENT "(" (expr ("," expr)*)? ")"  // function call
  *         | IDENT                              // variable reference
+ *         | STR                                // string literal
  *         | NUM                                // immediate value
  */
 Node *primary() {
@@ -428,6 +432,14 @@ Node *primary() {
         Var *var = find_var(tok->str);
         return new_node_varref(var);
     }
+
+    // string literal
+    if (consume(TK_RESERVED, "\"")) {
+        Token* tok = consume(TK_STR, NULL);
+        expect(TK_RESERVED, "\"");
+        return new_node_string(tok->str);
+    }
+
     // immediate value
     return new_node_num(expect(TK_NUM, NULL)->val);
 }
@@ -488,6 +500,17 @@ Node *new_node_func_call(Func *func, Vector *args) {
 Node *new_node_varref(Var *var) {
     Node *node = new_node(ND_VARREF);
     node->var = var;
+    return node;
+}
+
+Node *new_node_string(char *str) {
+    StrLiteral *strl = calloc(1, sizeof(StrLiteral));
+    strl->label = format(".L.str%d", str_label_cnt++);
+    strl->str = str;
+    map_insert(prog->strls, str, strl);
+    Node *node = new_node(ND_STR);
+    node->type = ary_of(type_char, strlen(str) + 1);
+    node->strl = strl;
     return node;
 }
 
