@@ -175,13 +175,16 @@ Program *parse();
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
-Type *ptr_to(Type *base);
-Type *int_ty();
 
 /*
- * sema.c
+ * type.c
  */
-void sema(Program *prog);
+extern Type *type_char;
+extern Type *type_int;
+void add_type(Program *prog);
+Type *ptr_to(Type *base);
+Type *ary_of(Type *base, int size);
+bool same_type(Type *x, Type *y);
 
 /*
  * codegen.c
@@ -195,4 +198,3 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void assert(bool cond, char *fmt, ...);
 void draw_ast();
-bool same_type(Type *x, Type *y);

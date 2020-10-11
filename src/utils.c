@@ -163,18 +163,3 @@ void draw_ast(Program *prog) {
         fprintf(stderr, "\n");
     }
 }
-
-bool same_type(Type *x, Type *y) {
-    if (x->kind != y->kind) {
-        return false;
-    }
-
-    switch (x->kind) {
-    case TY_PTR:
-        return same_type(x->ptr_to, y->ptr_to);
-    case TY_ARRAY:
-        return x->array_size == y->array_size && same_type(x->ptr_to, y->ptr_to);
-    default:
-        return true;
-    }
-}

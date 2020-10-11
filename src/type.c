@@ -18,6 +18,9 @@
 //
 // - Reject bad assignments, such as `1=2+3`.
 
+Type *type_char = &(Type){TY_CHAR, 1, NULL, 0, "char"};
+Type *type_int = &(Type){TY_INT, 4, NULL, 0, "int"};
+
 void check_integer(Node *node) {
     TypeKind kind = node->type->kind;
     assert(kind == TY_INT || kind == TY_CHAR, "Not an integer type: '%s'", node->type->str);
@@ -93,10 +96,10 @@ Node *do_walk(Node *node, bool decay) {
 
         if (node->lhs->type->kind == TY_PTR) {
             node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->type);
-            node->rhs->type = int_ty();
+            node->rhs->type = type_int;
             node->type = node->lhs->type;
         } else {
-            node->type = int_ty();
+            node->type = type_int;
         }
         return node;
     case ND_SUB:
@@ -116,7 +119,7 @@ Node *do_walk(Node *node, bool decay) {
             node->type = lty;
         } else {
             assert(rty->kind != TY_PTR, "Invalid operands: '%s' and '%s'", lty->str, rty->str);
-            node->type = int_ty();
+            node->type = type_int;
         }
         return node;
     case ND_ASSIGN:
@@ -135,7 +138,7 @@ Node *do_walk(Node *node, bool decay) {
         node->rhs = walk(node->rhs);
         check_integer(node->lhs);
         check_integer(node->rhs);
-        node->type = int_ty();
+        node->type = type_int;
         return node;
     case ND_ADDR:
         node->lhs = walk(node->lhs);
@@ -179,9 +182,51 @@ Node *do_walk(Node *node, bool decay) {
     }
 }
 
-void sema(Program *prog) {
+void add_type(Program *prog) {
     for (int i = 0; i < prog->funcs->len; i++) {
         Func *fn = vec_get(prog->funcs->vals, i);
         fn->body = walk(fn->body);
+    }
+}
+
+Type *new_ty(TypeKind kind, int size, char *repr) {
+    Type *type = calloc(1, sizeof(Type));
+    type->kind = kind;
+    type->size = size;
+    type->str = repr;
+    return type;
+}
+
+Type *ptr_to(Type *dest) {
+    char *repr = calloc(256, sizeof(char));
+    char *s = (dest->kind == TY_ARRAY || dest->kind == TY_PTR) ? "" : " ";
+    sprintf(repr, "%s%s*", dest->str, s);
+    Type *type = new_ty(TY_PTR, 8, repr);
+    type->ptr_to = dest;
+    return type;
+}
+
+Type *ary_of(Type *base, int size) {
+    char *repr = calloc(256, sizeof(char));
+    char *s = (base->kind == TY_ARRAY || base->kind == TY_PTR) ? "" : " ";
+    sprintf(repr, "%s%s[%d]", base->str, s, size);
+    Type *type = new_ty(TY_ARRAY, base->size * size, repr);
+    type->ptr_to = base;
+    type->array_size = size;
+    return type;
+}
+
+bool same_type(Type *x, Type *y) {
+    if (x->kind != y->kind) {
+        return false;
+    }
+
+    switch (x->kind) {
+    case TY_PTR:
+        return same_type(x->ptr_to, y->ptr_to);
+    case TY_ARRAY:
+        return x->array_size == y->array_size && same_type(x->ptr_to, y->ptr_to);
+    default:
+        return true;
     }
 }

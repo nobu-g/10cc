@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "parsed tokens syntactically\n");
 #endif
 
-    sema(prog);
+    add_type(prog);
 #if DEBUG <= 2
     fprintf(stderr, "parsed tokens semantically\n");
 #endif

@@ -32,11 +32,6 @@ Node *new_node_num(int val);
 Node *new_node_func_call(Func *func, Vector *args);
 Node *new_node_varref(Var *var);
 
-Type *new_ty(TypeKind kind, int size, char *repr);
-Type *int_ty();
-Type *char_ty();
-Type *ptr_to(Type *base);
-Type *ary_of(Type *base, int size);
 Type *read_type();
 
 Scope *new_scope() {
@@ -499,47 +494,16 @@ Node *new_node_varref(Var *var) {
 Node *new_node_num(int val) {
     Node *node = new_node(ND_NUM);
     node->val = val;
-    node->type = int_ty();
+    node->type = type_int;
     return node;
-}
-
-Type *new_ty(TypeKind kind, int size, char *repr) {
-    Type *type = calloc(1, sizeof(Type));
-    type->kind = kind;
-    type->size = size;
-    type->str = repr;
-    return type;
-}
-
-Type *int_ty() { return new_ty(TY_INT, 4, "int"); }
-
-Type *char_ty() { return new_ty(TY_CHAR, 1, "char"); }
-
-Type *ptr_to(Type *dest) {
-    char *repr = calloc(256, sizeof(char));
-    char *s = (dest->kind == TY_ARRAY || dest->kind == TY_PTR) ? "" : " ";
-    sprintf(repr, "%s%s*", dest->str, s);
-    Type *type = new_ty(TY_PTR, 8, repr);
-    type->ptr_to = dest;
-    return type;
-}
-
-Type *ary_of(Type *base, int size) {
-    char *repr = calloc(256, sizeof(char));
-    char *s = (base->kind == TY_ARRAY || base->kind == TY_PTR) ? "" : " ";
-    sprintf(repr, "%s%s[%d]", base->str, s, size);
-    Type *type = new_ty(TY_ARRAY, base->size * size, repr);
-    type->ptr_to = base;
-    type->array_size = size;
-    return type;
 }
 
 Type *read_type() {
     Type *type;
     if (consume(TK_RESERVED, "int")) {
-        type = int_ty();
+        type = type_int;
     } else if (consume(TK_RESERVED, "char")) {
-        type = char_ty();
+        type = type_char;
     } else {
         error_at(token->loc, "Invalid type");
     }
