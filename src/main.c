@@ -1,12 +1,43 @@
 #include "10cc.h"
 
+char *filename;
+char *user_input;
+
+char* read_file(char* path) {
+    // open file
+    FILE* fp = fopen(path, "r");
+    if (!fp) error("cannot open %s: %s", path, strerror(errno));
+
+    // seek toward end, get file size, and seek again toward start
+    if (fseek(fp, 0, SEEK_END) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+    size_t size = ftell(fp);
+    if (fseek(fp, 0, SEEK_SET) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+
+    // move file content to buf
+    char* buf = calloc(1, size + 2);  // 2: \n\0
+    fread(buf, size, 1, fp);
+
+    // end file with \n and append \0
+    if (size == 0 || buf[size - 1] != '\n') {
+        buf[size++] = '\n';
+    }
+    buf[size] = '\0';
+    fclose(fp);
+    return buf;
+}
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "%s: invalid number of arguments\n", argv[0]);
         return 1;
     }
 
-    user_input = argv[1];
+    filename = argv[1];
+    user_input = read_file(filename);
 #if DEBUG <= 2
     fprintf(stderr, "received user input\n");
 #endif

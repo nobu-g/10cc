@@ -20,18 +20,38 @@ void error(char *fmt, ...) {
 }
 
 void error_at(char *loc, char *fmt, ...) {
+    // find the start/end positions of the line
+    char *start = loc;
+    while (user_input < start && start[-1] != '\n') {
+        start--;
+    }
+    char *end = loc;
+    while (*end != '\n') {
+        end++;
+    }
+
+    // investigate the line number
+    int line_num = 1;
+    for (char *p = user_input; p < start; p++) {
+        if (*p == '\n') {
+            line_num++;
+        }
+    }
+
+    // report the line number with the file name
+    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+    fprintf(stderr, "%.*s\n", (int)(end - start), start);
+
+    // show the error message with a pointer "^"
+    int pos = loc - start + indent;
+    fprintf(stderr, "%*s", pos, "");
+    fprintf(stderr, "^ ");
     va_list ap;
     va_start(ap, fmt);
-
-    int pos = loc - user_input;
-    fprintf(stderr, "%s\n", user_input);
-    fprintf(stderr, "%*s", pos, "");  // pos個の空白を出力
-    fprintf(stderr, "^ ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
 }
-
 void assert(bool cond, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);

@@ -1,10 +1,11 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 // 0: TRACE
 // 1: DEBUG
@@ -165,9 +166,14 @@ typedef struct {
 } Program;
 
 /*
+ * main.c
+ */
+extern char *filename;
+extern char *user_input;
+
+/*
  * tokenize.c
  */
-extern char *user_input;
 extern Token *token;
 
 void tokenize();

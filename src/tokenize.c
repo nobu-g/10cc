@@ -1,6 +1,5 @@
 #include "10cc.h"
 
-char *user_input;
 Token *token;
 
 bool startswith(char *p, char *q);

@@ -6,7 +6,9 @@ assert() {
   expected="$1"
   input="$2"
 
-  ./build/10cc "$input" > tests/tmp.s
+  dir=$(mktemp -d)
+  echo "$input" > "$dir/tmp.c"
+  ./build/10cc "$dir/tmp.c" > tests/tmp.s
   cc -c tests/tmp.s -o tests/tmp.o
   cc -static -o tests/tmp tests/tmp.o
   ./tests/tmp
