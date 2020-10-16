@@ -162,7 +162,7 @@ struct Func {
 typedef struct {
     Map *funcs;  // function definitions (Map<char *, Func *>)
     Map *gvars;  // global variable declarations (Map<char *, Var *>)
-    Map *strls;  // string literals (Map<char *, StrLiteral *>)
+    Vector *strls;  // string literals (Vector<StrLiteral *>)
 } Program;
 
 /*

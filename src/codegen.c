@@ -28,7 +28,7 @@ void gen_x86_64(Program *prog) {
         gen_gvar(vec_get(prog->gvars->vals, i));
     }
     for (int i = 0; i < prog->strls->len; i++) {
-        gen_strl(vec_get(prog->strls->vals, i));
+        gen_strl(vec_get(prog->strls, i));
     }
     // text segment
     printf("\n");

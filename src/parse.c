@@ -60,7 +60,7 @@ Program *parse() {
     prog = calloc(1, sizeof(Program));
     prog->funcs = map_create();
     prog->gvars = map_create();
-    prog->strls = map_create();
+    prog->strls = vec_create();
     while (!at_eof()) {
         top_level();
     }
@@ -507,7 +507,7 @@ Node *new_node_string(char *str) {
     StrLiteral *strl = calloc(1, sizeof(StrLiteral));
     strl->label = format(".L.str%d", str_label_cnt++);
     strl->str = str;
-    map_insert(prog->strls, str, strl);
+    vec_push(prog->strls, strl);
     Node *node = new_node(ND_STR);
     node->type = ary_of(type_char, strlen(str) + 1);
     node->strl = strl;
