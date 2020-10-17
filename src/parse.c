@@ -29,6 +29,7 @@ Var *find_var(char *name);
 Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
+Node *new_node_block(Vector *stmts);
 Node *new_node_func_call(Func *func, Vector *args);
 Node *new_node_varref(Var *var);
 Node *new_node_string(char *str);
@@ -101,11 +102,11 @@ void top_level() {
         if (func->body) {
             error_at(token->loc, "Redefinition of function: '%s'", func->name);
         }
-        func->body = new_node(ND_BLOCK);
-        func->body->stmts = vec_create();
+        Vector *stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
-            vec_push(func->body->stmts, stmt());
+            vec_push(stmts, stmt());
         }
+        func->body = new_node_block(stmts);
     } else {
         // global variable
         type = read_array(type);
@@ -142,6 +143,7 @@ Type *read_array(Type *base) {
         vec_pushi(sizes, tok ? tok->val : -1);  // tentatively, array size is -1 when omitted
         expect(TK_RESERVED, "]");
     }
+    // a[2][3] means 2-length array of 3-length array of int
     Type *type = base;
     for (int i = sizes->len - 1; i >= 0; i--) {
         type = ary_of(type, vec_geti(sizes, i));
@@ -207,19 +209,18 @@ Var *new_var(Type *type, char *name, bool is_local) {
  *      | expr ";"
  */
 Node *stmt() {
-    Node *node;
     if (consume(TK_RESERVED, "{")) {
-        node = new_node(ND_BLOCK);
-        node->stmts = vec_create();
         enter_scope();
+        Vector *stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
-            vec_push(node->stmts, stmt());
+            vec_push(stmts, stmt());
         }
         leave_scope();
-        return node;
+        return new_node_block(stmts);
     } else if (consume(TK_RESERVED, "return")) {
-        node = new_node(ND_RETURN);
-        node->lhs = expr();
+        Node *node = new_node_uniop(ND_RETURN, expr());
+        expect(TK_RESERVED, ";");
+        return node;
     } else if (consume(TK_RESERVED, "if")) {
         Node *node = new_node(ND_IF);
         expect(TK_RESERVED, "(");
@@ -262,10 +263,10 @@ Node *stmt() {
     } else if (consume(TK_RESERVED, ";")) {
         return &null_stmt;
     } else {
-        node = expr();
+        Node *node = expr();
+        expect(TK_RESERVED, ";");
+        return node;
     }
-    expect(TK_RESERVED, ";");
-    return node;
 }
 
 /**
@@ -487,6 +488,12 @@ Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = new_node(kind);
     node->lhs = lhs;
     node->rhs = rhs;
+    return node;
+}
+
+Node *new_node_block(Vector *stmts) {
+    Node *node = new_node(ND_BLOCK);
+    node->stmts = stmts;
     return node;
 }
 
