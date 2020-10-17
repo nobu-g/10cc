@@ -16,23 +16,25 @@ void gen_func(Func *fn);
 int assign_lvar_offset(Scope *scope, int offset);
 void gen(Node *node);
 void gen_lval(Node *node);
+void gen_load(Type *type);
 char *reg(int size);
 char *argreg(int r, int size);
 
+// generate assembly codes for x86-64
 void gen_x86_64(Program *prog) {
     printf(".intel_syntax noprefix\n");
 
     // data segment
-    printf(".data\n");
+    printf("\n.data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
         gen_gvar(vec_get(prog->gvars->vals, i));
     }
     for (int i = 0; i < prog->strls->len; i++) {
         gen_strl(vec_get(prog->strls, i));
     }
+
     // text segment
-    printf("\n");
-    printf(".text\n");
+    printf("\n.text\n");
     for (int i = 0; i < prog->funcs->len; i++) {
         Func *fn = vec_get(prog->funcs->vals, i);
         if (fn->body) {
@@ -92,7 +94,7 @@ int assign_lvar_offset(Scope *scope, int offset) {
     return offset;
 }
 
-// スタックから入力を受け取り、nodeが表す演算の結果をスタックに戻す処理を生成する
+// generate a process that pushes the result of the operation represented by node to the stack
 void gen(Node *node) {
     int cur_label_cnt;
     switch (node->kind) {
@@ -102,7 +104,9 @@ void gen(Node *node) {
         printf("  push %d\n", node->val);
         return;
     case ND_STR:
-        gen_lval(node);
+        // All string literals are converted to arrays, and the node kind
+        // should be ND_ADDR, not ND_STR.
+        error("string literal: \"%s\" not converted to array", node->strl->str);
         return;
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
@@ -116,12 +120,7 @@ void gen(Node *node) {
         return;
     case ND_VARREF:
         gen_lval(node);
-        printf("  pop rax\n");                               // set rax to the address of the variable
-        printf("  mov %s, [rax]\n", reg(node->type->size));  // raxの指す先にアクセスして中身をraxにコピー
-        if (node->type->size == 1) {
-            printf("  movsx %s, %s\n", reg(8), reg(1));
-        }
-        printf("  push %s\n", reg(8));  // コピーしてきた値をスタックにpush
+        gen_load(node->type);
         return;
     case ND_ASSIGN:
         gen_lval(node->lhs);
@@ -187,14 +186,9 @@ void gen(Node *node) {
     case ND_ADDR:
         gen_lval(node->lhs);
         return;
-    case ND_DEREF:       // 右辺値参照
-        gen(node->lhs);  // アドレスがスタックに積まれる
-        printf("  pop rax\n");
-        printf("  mov %s, [rax]\n", reg(node->type->size));
-        if (node->type->size == 1) {
-            printf("  movsx %s, %s\n", reg(8), reg(1));
-        }
-        printf("  push %s\n", reg(8));
+    case ND_DEREF:       // right value
+        gen(node->lhs);  // node->lhs is the address of node
+        gen_load(node->type);
         return;
     default:
         break;
@@ -246,7 +240,7 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-// Push the address of the local/global variable represented by node
+// Push the address of the value that node stores
 void gen_lval(Node *node) {
     switch (node->kind) {
     case ND_VARREF:
@@ -267,6 +261,18 @@ void gen_lval(Node *node) {
     default:
         error("Referable node expected");
     }
+}
+
+// Push the value of which the address is stored in the stack top
+void gen_load(Type *type) {
+    printf("  pop rax\n");  // set rax to the address of the variable
+    printf("  mov %s, [rax]\n", reg(type->size));  // load the value of the variable
+    // When loaded to a 8bit register, such as AL, the upper 56 bits are not reset to zero.
+    // So it is necessary to do sign extension in such case.
+    if (type->size == 1) {
+        printf("  movsx %s, %s\n", reg(8), reg(1));
+    }
+    printf("  push %s\n", reg(8));
 }
 
 char *reg(int size) {
