@@ -115,6 +115,7 @@ void gen(Node *node) {
         for (int i = node->args->len - 1; i >= 0 ; i--) {
             printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
         }
+        printf("  mov al, 0\n");
         printf("  call %s\n", node->func->name);
         printf("  push rax\n");
         return;
