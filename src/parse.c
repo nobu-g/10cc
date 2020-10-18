@@ -13,6 +13,7 @@ Func *new_func(Type *ret_type, char *name, Vector *args);
 Var *new_var(Type *type, char *name, bool is_local);
 
 Node *stmt();
+Node *expr_stmt();
 Node *expr();
 Node *assign();
 Node *equality();
@@ -243,12 +244,10 @@ Node *stmt() {
         expect(TK_RESERVED, "(");
         enter_scope();
         if (!consume(TK_RESERVED, ";")) {
-            node->init = expr();
-            expect(TK_RESERVED, ";");
+            node->init = expr_stmt();
         }
         if (!consume(TK_RESERVED, ";")) {
-            node->cond = expr();
-            expect(TK_RESERVED, ";");
+            node->cond = expr_stmt();
         }
         if (!consume(TK_RESERVED, ";")) {
             node->upd = expr();
@@ -263,10 +262,17 @@ Node *stmt() {
     } else if (consume(TK_RESERVED, ";")) {
         return &null_stmt;
     } else {
-        Node *node = expr();
-        expect(TK_RESERVED, ";");
-        return node;
+        return expr_stmt();
     }
+}
+
+/**
+ * expr_stmt = expr ";"
+ */
+Node *expr_stmt() {
+    Node *node = new_node_uniop(ND_EXPR_STMT, expr());
+    expect(TK_RESERVED, ";");
+    return node;
 }
 
 /**
@@ -400,16 +406,28 @@ Node *postfix() {
 }
 
 /**
- * primary = "(" expr ")"                       // parenthesis
+ * primary = "(" expr ")"                       // expression
+ *         | "(" "{" stmt+ "}" ")"              // statement expression
  *         | IDENT "(" (expr ("," expr)*)? ")"  // function call
  *         | IDENT                              // variable reference
  *         | STR                                // string literal
  *         | NUM                                // immediate value
  */
 Node *primary() {
-    // parenthesis
+    // expression
     if (consume(TK_RESERVED, "(")) {
-        Node *node = expr();
+        Node *node;
+        if (consume(TK_RESERVED, "{")) {
+            enter_scope();
+            node = new_node(ND_STMT_EXPR);
+            node->stmts = vec_create();
+            while (!consume(TK_RESERVED, "}")) {
+                vec_push(node->stmts, stmt());
+            }
+            leave_scope();
+        } else {
+            node = expr();
+        }
         expect(TK_RESERVED, ")");
         return node;
     }

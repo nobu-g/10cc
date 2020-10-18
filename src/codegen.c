@@ -180,9 +180,13 @@ void gen(Node *node) {
         printf(".Lend%03d:\n", cur_label_cnt);
         return;
     case ND_BLOCK:
+    case ND_STMT_EXPR:
         for (int i = 0; i < node->stmts->len; i++) {
             gen(vec_get(node->stmts, i));
         }
+        return;
+    case ND_EXPR_STMT:
+        gen(node->lhs);
         return;
     case ND_ADDR:
         gen_lval(node->lhs);

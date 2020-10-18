@@ -105,8 +105,10 @@ typedef enum {
     ND_IF,         // if
     ND_WHILE,      // while
     ND_FOR,        // for
-    ND_BLOCK,      // block
+    ND_BLOCK,      // { ... }
     ND_FUNC_CALL,  // function call
+    ND_STMT_EXPR,  // statement expression
+    ND_EXPR_STMT,  // expression statement
     ND_VARREF,     // variable reference
     ND_STR,        // string literal
     ND_NUM,        // immediate value
@@ -132,7 +134,7 @@ struct Node {
     Node *init;
     Node *upd;
 
-    // used for block
+    // used for block or statement expression
     Vector *stmts;  // Vector<Node *>
 
     // used for function call

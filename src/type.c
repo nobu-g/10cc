@@ -84,6 +84,18 @@ Node *do_walk(Node *node, bool decay) {
             vec_set(node->stmts, i, walk(stmt));
         }
         return node;
+    case ND_STMT_EXPR:
+        for (int i = 0; i < node->stmts->len; i++) {
+            Node *stmt = vec_get(node->stmts, i);
+            vec_set(node->stmts, i, walk(stmt));
+        }
+        Node *last = vec_get(node->stmts, node->stmts->len - 1);
+        assert(last->kind == ND_EXPR_STMT, "statement expression returning void is not supported");
+        node->type = last->lhs->type;
+        return node;
+    case ND_EXPR_STMT:
+        node->lhs = walk(node->lhs);
+        return node;
     case ND_ADD:
         node->lhs = walk(node->lhs);
         node->rhs = walk(node->rhs);

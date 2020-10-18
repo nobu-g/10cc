@@ -148,6 +148,16 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
                 draw_node_tree(vec_get(node->stmts, i), depth + 1, "");
             }
             break;
+        case ND_STMT_EXPR:
+            fprintf(stderr, "STMT_EXPR\n");
+            for (int i = 0; i < node->stmts->len; i++) {
+                draw_node_tree(vec_get(node->stmts, i), depth + 1, "");
+            }
+            break;
+        case ND_EXPR_STMT:
+            fprintf(stderr, "EXPR_STMT\n");
+            draw_node_tree(node->lhs, depth + 1, "");
+            break;
         case ND_FUNC_CALL:
             fprintf(stderr, "FUNC_CALL(%s)\n", node->func->name);
             for (int i = 0; i < node->args->len; i++) {
