@@ -88,6 +88,8 @@ int test71() { int x[2][3]; int *y; y=x[1]; y[1]=4; return x[1][1]; }
 int test72() { int x[2][3]; int *y; y=x[1]; y[2]=5; return x[1][2]; }
 int test73() { int a[2][3]; return sizeof(*a); }
 int test74() { return 1 /*+ 1*/; }
+int test75() { char* foo; foo = "bar"; return 0; }
+int test76() { return first("bcd") - first("abc"); }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -165,6 +167,8 @@ int main() {
     assert(5, test72(), "{ int x[2][3]; int *y; y=x[1]; y[2]=5; return x[1][2]; }");
     assert(12, test73(), "{ int a[2][3]; return sizeof(*a); }");
     assert(1, test74(), "{ return 1 /*+ 1*/; }");
+    assert(0, test75(), "{ char* foo; foo = \"bar\"; return 0; }");
+    assert(1, test76(), "{ return first(\"bcd\") - first(\"abc\"); }");
 
     return 0;
 }
