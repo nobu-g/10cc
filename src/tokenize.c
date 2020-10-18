@@ -14,11 +14,13 @@ void tokenize() {
     char *p = user_input;
 
     while (*p) {
+        // skip space characters
         if (isspace(*p)) {
             p++;
             continue;
         }
 
+        // skip line comment
         if (strncmp(p, "//", 2) == 0) {
             p += 2;
             while (*p != '\n') {
@@ -27,6 +29,7 @@ void tokenize() {
             continue;
         }
 
+        // skip block comment
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {
@@ -36,6 +39,7 @@ void tokenize() {
             continue;
         }
 
+        // read reserved word
         char *kw = read_reserved(p);
         if (kw) {
             int len = strlen(kw);

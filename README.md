@@ -18,6 +18,8 @@ This project is a reimplementation of [rui314's 9cc](https://github.com/rui314/9
 - local/global variable
 - function
 - variable scope
+- string literal
+- comments
 
 ## Reference
 [低レイヤを知りたい人のためのCコンパイラ作成入門](https://www.sigbus.info/compilerbook)
