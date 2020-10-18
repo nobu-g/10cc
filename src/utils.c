@@ -1,5 +1,10 @@
 #include "10cc.h"
 
+void debug(char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+}
 // Takes a printf-style format string and returns a formatted string.
 char *format(char *fmt, ...) {
     size_t size = 2048;
