@@ -241,17 +241,11 @@ Node *stmt() {
         return node;
     } else if (consume(TK_RESERVED, "for")) {
         Node *node = new_node(ND_FOR);
-        expect(TK_RESERVED, "(");
         enter_scope();
-        if (!consume(TK_RESERVED, ";")) {
-            node->init = expr_stmt();
-        }
-        if (!consume(TK_RESERVED, ";")) {
-            node->cond = expr_stmt();
-        }
-        if (!consume(TK_RESERVED, ";")) {
-            node->upd = expr();
-        }
+        expect(TK_RESERVED, "(");
+        node->init = consume(TK_RESERVED, ";") ? &null_stmt : expr_stmt();
+        node->cond = consume(TK_RESERVED, ";") ? new_node_num(1) : expr_stmt();
+        node->upd = peek(TK_RESERVED, ")") ? &null_stmt : expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         leave_scope();

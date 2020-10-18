@@ -30,6 +30,8 @@ append "int num; num=10;if((num/3)*3 == num)return 3;else if((num/5)*5 == num)re
 append "int a; a = 0; while (a < 10) a = a + 1; return a;" "10"
 append "int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; return total;" "55"
 append "int total; int i; total = 0; for (i=1; i <= 10; i=i+1) {total = total + i; total = total + i;} return total;" "110"
+append "int i; i = 0; for (; i < 10;) {i = i + 1;} return i;" "10"
+append "int i; i = 0; for (;;) {i = i + 1; if (i >= 5) return i;} return i;" "5"
 append "return f1(0);" "2"
 append "return fact(4);" "24"
 append "return fibo(6);" "13"
