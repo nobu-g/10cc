@@ -74,6 +74,9 @@ void tokenize() {
             p++;
             int len = 0;
             while (p[len] && p[len] != '"') {
+                if (p[len] == '\\') {
+                    len++;
+                }
                 len++;
             }
             cur = new_token(TK_STR, cur, p, len);
