@@ -21,18 +21,20 @@ $(OUTDIR)/%.o: $(SRCDIR)/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 .PHONY: test
-test: test/tmp.s test/util.o
-	$(CC) $(CFLAGS) -o test/tmp test/tmp.s test/util.o
-	./test/tmp
+test: test/tmp
+	./$<
+
+test/tmp: test/tmp.s test/util.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 test/tmp.s: $(TARGET) test/test.c
 	$(TARGET) test/test.c > $@
 
 test/test.c: test/prep.sh
-	./test/prep.sh > $@
+	./$< > $@
 
 test/util.o: test/util.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 .PHONY: clean
 clean:
