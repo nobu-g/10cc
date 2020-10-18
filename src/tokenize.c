@@ -67,12 +67,13 @@ void tokenize() {
         // read string literal
         if (*p == '"') {
             cur = new_token(TK_RESERVED, cur, p, 1);
+            p++;
             int len = 0;
-            while (p[len + 1] && p[len + 1] != '"') {
+            while (p[len] && p[len] != '"') {
                 len++;
             }
-            cur = new_token(TK_STR, cur, p + 1, len);
-            p += len + 1;
+            cur = new_token(TK_STR, cur, p, len);
+            p += len;
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
             continue;
