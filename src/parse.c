@@ -7,7 +7,7 @@ int str_label_cnt = 1;
 
 void top_level();
 Var *param_declaration();
-void declaration();
+Node *declaration();
 Type *read_array(Type *base);
 Func *new_func(Type *ret_type, char *name, Vector *args);
 Var *new_var(Type *type, char *name, bool is_local);
@@ -129,12 +129,49 @@ Var *param_declaration() {
 /*
  * declaration = T IDENT ("[" NUM? "]")* ";"
  */
-void declaration() {
+Node *declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     type = read_array(type);
-    new_var(type, tok->str, true);
+    Var *var = new_var(type, tok->str, true);
+
+    Node *init = &null_stmt;
+    if (consume(TK_RESERVED, "=")) {
+        Node *lhs = new_node_varref(var);
+        if (type->kind == TY_ARRAY) {
+            expect(TK_RESERVED, "{");
+            Node* init = new_node(ND_BLOCK);
+            init->stmts = vec_create();
+            for (int i = 0;; i++) {
+                if (consume(TK_RESERVED, "}")) {
+                    if (type->array_size != -1) {
+                        for (int j = i; j < type->array_size; j++) {
+                            Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
+                            vec_push(init->stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0)));
+                        }
+                    }
+                    break;
+                }
+                if (type->array_size != -1 && i >= type->array_size) {
+                    error("excess elements in array inititalizer");
+                }
+                if (init->stmts->len > 0) {
+                    expect(TK_RESERVED, ",");
+                }
+                Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+                vec_push(init->stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr()));
+            }
+            if (type->array_size == -1) {
+                type->array_size = init->stmts->len;
+                type->size = type->ptr_to->size * type->array_size;
+            }
+            return init;
+        } else {
+            init = new_node_binop(ND_ASSIGN, lhs, assign());
+        }
+    }
     expect(TK_RESERVED, ";");
+    return init;
 }
 
 Type *read_array(Type *base) {
@@ -251,8 +288,7 @@ Node *stmt() {
         leave_scope();
         return node;
     } else if (at_typename()) {
-        declaration();
-        return &null_stmt;
+        return declaration();
     } else if (consume(TK_RESERVED, ";")) {
         return &null_stmt;
     } else {

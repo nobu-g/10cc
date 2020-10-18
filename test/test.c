@@ -92,14 +92,22 @@ int test75() { int a[2][3]; return sizeof(*a); }
 int test76() { return 1 /*+ 1*/; }
 int test77() { char* foo; foo = "bar"; return 0; }
 int test78() { return first("bcd") - first("abc"); }
-int test79() { return ({ 0; }); }
-int test80() { return ({ 0; 1; 2; }); }
-int test81() { ({ 0; return 1; 2; }); return 3; }
-int test82() { return ({ 1; }) + ({ 2; }) + ({ 3; }); }
-int test83() { return ({ int x; x=3; x; }); }
-int test84() { return ({ int a; a=3; a = a + 3; }); }
-int test85() { return ({ int a; a = 0; while (a < 10) a = a + 1; a; }); }
-int test86() { return ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }); }
+int test79() { char *str = "hello"; return sizeof(str); }
+int test80() { char *str = "hello"; return str[0]; }
+int test81() { return ({ 0; }); }
+int test82() { return ({ 0; 1; 2; }); }
+int test83() { ({ 0; return 1; 2; }); return 3; }
+int test84() { return ({ 1; }) + ({ 2; }) + ({ 3; }); }
+int test85() { return ({ int x; x=3; x; }); }
+int test86() { return ({ int a; a=3; a = a + 3; }); }
+int test87() { return ({ int a; a = 0; while (a < 10) a = a + 1; a; }); }
+int test88() { return ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }); }
+int test89() { int x = 3; return x; }
+int test90() { int x = foo(); return x; }
+int test91() { char x = 3; return x; }
+int test92() { int a[3] = {0, 1, 2}; return a[1]; }
+int test93() { int a[3] = {2}; return a[2]; }
+int test94() { int a[] = {0, 1, 2}; return a[1]; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -181,14 +189,22 @@ int main() {
     assert(1, test76(), "{ return 1 /*+ 1*/; }");
     assert(0, test77(), "{ char* foo; foo = \"bar\"; return 0; }");
     assert(1, test78(), "{ return first(\"bcd\") - first(\"abc\"); }");
-    assert(0, test79(), "{ return ({ 0; }); }");
-    assert(2, test80(), "{ return ({ 0; 1; 2; }); }");
-    assert(1, test81(), "{ ({ 0; return 1; 2; }); return 3; }");
-    assert(6, test82(), "{ return ({ 1; }) + ({ 2; }) + ({ 3; }); }");
-    assert(3, test83(), "{ return ({ int x; x=3; x; }); }");
-    assert(6, test84(), "{ return ({ int a; a=3; a = a + 3; }); }");
-    assert(10, test85(), "{ return ({ int a; a = 0; while (a < 10) a = a + 1; a; }); }");
-    assert(55, test86(), "{ return ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }); }");
+    assert(8, test79(), "{ char *str = \"hello\"; return sizeof(str); }");
+    assert(104, test80(), "{ char *str = \"hello\"; return str[0]; }");
+    assert(0, test81(), "{ return ({ 0; }); }");
+    assert(2, test82(), "{ return ({ 0; 1; 2; }); }");
+    assert(1, test83(), "{ ({ 0; return 1; 2; }); return 3; }");
+    assert(6, test84(), "{ return ({ 1; }) + ({ 2; }) + ({ 3; }); }");
+    assert(3, test85(), "{ return ({ int x; x=3; x; }); }");
+    assert(6, test86(), "{ return ({ int a; a=3; a = a + 3; }); }");
+    assert(10, test87(), "{ return ({ int a; a = 0; while (a < 10) a = a + 1; a; }); }");
+    assert(55, test88(), "{ return ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }); }");
+    assert(3, test89(), "{ int x = 3; return x; }");
+    assert(3, test90(), "{ int x = foo(); return x; }");
+    assert(3, test91(), "{ char x = 3; return x; }");
+    assert(1, test92(), "{ int a[3] = {0, 1, 2}; return a[1]; }");
+    assert(0, test93(), "{ int a[3] = {2}; return a[2]; }");
+    assert(1, test94(), "{ int a[] = {0, 1, 2}; return a[1]; }");
 
     return 0;
 }
