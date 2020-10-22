@@ -127,7 +127,7 @@ Var *param_declaration() {
 }
 
 /*
- * declaration = T IDENT ("[" NUM? "]")* ";"
+ * declaration = T IDENT ("[" NUM? "]")* ("=" init)? ";"
  */
 Node *declaration() {
     Type *type = read_type();
@@ -139,33 +139,35 @@ Node *declaration() {
     if (consume(TK_RESERVED, "=")) {
         Node *lhs = new_node_varref(var);
         if (type->kind == TY_ARRAY) {
-            expect(TK_RESERVED, "{");
-            Node* init = new_node(ND_BLOCK);
-            init->stmts = vec_create();
-            for (int i = 0;; i++) {
-                if (consume(TK_RESERVED, "}")) {
-                    if (type->array_size != -1) {
-                        for (int j = i; j < type->array_size; j++) {
-                            Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
-                            vec_push(init->stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0)));
+            if (consume(TK_RESERVED, "{")) {
+                Vector *stmts = vec_create();
+                for (int i = 0;; i++) {
+                    if (consume(TK_RESERVED, "}")) {
+                        if (type->array_size != -1) {
+                            for (int j = i; j < type->array_size; j++) {
+                                Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
+                                vec_push(stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0)));
+                            }
                         }
+                        break;
                     }
-                    break;
+                    if (type->array_size != -1 && i >= type->array_size) {
+                        error("excess elements in array inititalizer");
+                    }
+                    if (stmts->len > 0) {
+                        expect(TK_RESERVED, ",");
+                    }
+                    Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+                    vec_push(stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr()));
                 }
-                if (type->array_size != -1 && i >= type->array_size) {
-                    error("excess elements in array inititalizer");
+                if (type->array_size == -1) {
+                    type->array_size = stmts->len;
+                    type->size = type->ptr_to->size * type->array_size;
                 }
-                if (init->stmts->len > 0) {
-                    expect(TK_RESERVED, ",");
-                }
-                Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
-                vec_push(init->stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr()));
+                return new_node_block(stmts);
+            } else if (consume(TK_RESERVED, "\"")) {
+                // TODO: string literal
             }
-            if (type->array_size == -1) {
-                type->array_size = init->stmts->len;
-                type->size = type->ptr_to->size * type->array_size;
-            }
-            return init;
         } else {
             init = new_node_binop(ND_ASSIGN, lhs, assign());
         }
@@ -281,7 +283,7 @@ Node *stmt() {
         enter_scope();
         expect(TK_RESERVED, "(");
         node->init = consume(TK_RESERVED, ";") ? &null_stmt : expr_stmt();
-        node->cond = consume(TK_RESERVED, ";") ? new_node_num(1) : expr_stmt();
+        node->cond = peek(TK_RESERVED, ";") ? new_node_num(1) : expr(); expect(TK_RESERVED, ";");
         node->upd = peek(TK_RESERVED, ")") ? &null_stmt : expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();

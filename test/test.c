@@ -2,6 +2,8 @@
 
 int assert(int expected, int actual, char *code);
 
+int foooo(int x, int y) {return x;}
+
 int foo() { return 3; }
 int add(int a, int b) {return a + b;}
 int f2(int m); int f1(int n) {return f2(n+1);}
@@ -105,9 +107,16 @@ int test88() { return ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) 
 int test89() { int x = 3; return x; }
 int test90() { int x = foo(); return x; }
 int test91() { char x = 3; return x; }
-int test92() { int a[3] = {0, 1, 2}; return a[1]; }
-int test93() { int a[3] = {2}; return a[2]; }
-int test94() { int a[] = {0, 1, 2}; return a[1]; }
+int test92() { int a[3] = {0, 1, 2}; return a[0]; }
+int test93() { int a[3] = {0, 1, 2}; return a[1]; }
+int test94() { int a[3] = {0, 1, 2}; return a[2]; }
+int test95() { int a[3] = {3}; return a[0]; }
+int test96() { int a[3] = {3}; return a[1]; }
+int test97() { int a[3] = {3}; return a[2]; }
+int test98() { int a[] = {0, 1, 2}; return a[0]; }
+int test99() { int a[] = {0, 1, 2}; return a[1]; }
+int test100() { int a[] = {0, 1, 2}; return a[2]; }
+int test101() { foooo(1, ({int a; a = 2; a = 3;})); }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -202,9 +211,16 @@ int main() {
     assert(3, test89(), "{ int x = 3; return x; }");
     assert(3, test90(), "{ int x = foo(); return x; }");
     assert(3, test91(), "{ char x = 3; return x; }");
-    assert(1, test92(), "{ int a[3] = {0, 1, 2}; return a[1]; }");
-    assert(0, test93(), "{ int a[3] = {2}; return a[2]; }");
-    assert(1, test94(), "{ int a[] = {0, 1, 2}; return a[1]; }");
+    assert(0, test92(), "{ int a[3] = {0, 1, 2}; return a[0]; }");
+    assert(1, test93(), "{ int a[3] = {0, 1, 2}; return a[1]; }");
+    assert(2, test94(), "{ int a[3] = {0, 1, 2}; return a[2]; }");
+    assert(3, test95(), "{ int a[3] = {3}; return a[0]; }");
+    assert(0, test96(), "{ int a[3] = {3}; return a[1]; }");
+    assert(0, test97(), "{ int a[3] = {3}; return a[2]; }");
+    assert(0, test98(), "{ int a[] = {0, 1, 2}; return a[0]; }");
+    assert(1, test99(), "{ int a[] = {0, 1, 2}; return a[1]; }");
+    assert(2, test100(), "{ int a[] = {0, 1, 2}; return a[2]; }");
+    assert(1, test101(), "{ foooo(1, ({int a; a = 2; a = 3;})); }");
 
     return 0;
 }
