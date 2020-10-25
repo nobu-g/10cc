@@ -38,8 +38,4 @@ test/util.o: test/util.c
 
 .PHONY: clean
 clean:
-	rm -r $(OUTDIR)/*
-
-.PHONY: clean-test
-clean-test:
-	rm -f test/tmp test/*.o
+	rm -f $(OUTDIR)/* test/tmp* test/test.c test/*.o
