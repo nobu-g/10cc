@@ -107,15 +107,10 @@ int test90() { return add(0, ({ int i = 0; for (;i < 10;) {i = i + 1; } i; })); 
 int test91() { int x = 3; return x; }
 int test92() { int x = foo(); return x; }
 int test93() { char x = 3; return x; }
-int test94() { int a[3] = {0, 1, 2}; return a[0]; }
-int test95() { int a[3] = {0, 1, 2}; return a[1]; }
-int test96() { int a[3] = {0, 1, 2}; return a[2]; }
-int test97() { int a[3] = {3}; return a[0]; }
-int test98() { int a[3] = {3}; return a[1]; }
-int test99() { int a[3] = {3}; return a[2]; }
-int test100() { int a[] = {0, 1, 2}; return a[0]; }
-int test101() { int a[] = {0, 1, 2}; return a[1]; }
-int test102() { int a[] = {0, 1, 2}; return a[2]; }
+int test94() { int x = {3}; return x; }
+int test95() { int a[3] = {0, 1, 2}; return a[0]; }
+int test96() { int a[3] = {0, 1, 2}; return a[1]; }
+int test97() { int a[3] = {0, 1, 2}; return a[2]; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -212,15 +207,10 @@ int main() {
     assert(3, test91(), "{ int x = 3; return x; }");
     assert(3, test92(), "{ int x = foo(); return x; }");
     assert(3, test93(), "{ char x = 3; return x; }");
-    assert(0, test94(), "{ int a[3] = {0, 1, 2}; return a[0]; }");
-    assert(1, test95(), "{ int a[3] = {0, 1, 2}; return a[1]; }");
-    assert(2, test96(), "{ int a[3] = {0, 1, 2}; return a[2]; }");
-    assert(3, test97(), "{ int a[3] = {3}; return a[0]; }");
-    assert(0, test98(), "{ int a[3] = {3}; return a[1]; }");
-    assert(0, test99(), "{ int a[3] = {3}; return a[2]; }");
-    assert(0, test100(), "{ int a[] = {0, 1, 2}; return a[0]; }");
-    assert(1, test101(), "{ int a[] = {0, 1, 2}; return a[1]; }");
-    assert(2, test102(), "{ int a[] = {0, 1, 2}; return a[2]; }");
+    assert(3, test94(), "{ int x = {3}; return x; }");
+    assert(0, test95(), "{ int a[3] = {0, 1, 2}; return a[0]; }");
+    assert(1, test96(), "{ int a[3] = {0, 1, 2}; return a[1]; }");
+    assert(2, test97(), "{ int a[3] = {0, 1, 2}; return a[2]; }");
 
     return 0;
 }

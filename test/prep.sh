@@ -102,15 +102,16 @@ append "return add(0, ({ int i = 0; for (;i < 10;) {i = i + 1; } i; }));" 10
 append "int x = 3; return x;" 3
 append "int x = foo(); return x;" 3
 append "char x = 3; return x;" 3
+append "int x = {3}; return x;" 3
 append "int a[3] = {0, 1, 2}; return a[0];" 0
 append "int a[3] = {0, 1, 2}; return a[1];" 1
 append "int a[3] = {0, 1, 2}; return a[2];" 2
-append "int a[3] = {3}; return a[0];" 3
-append "int a[3] = {3}; return a[1];" 0
-append "int a[3] = {3}; return a[2];" 0
-append "int a[] = {0, 1, 2}; return a[0];" 0
-append "int a[] = {0, 1, 2}; return a[1];" 1
-append "int a[] = {0, 1, 2}; return a[2];" 2
+# append "int a[3] = {3}; return a[0];" 3
+# append "int a[3] = {3}; return a[1];" 0
+# append "int a[3] = {3}; return a[2];" 0
+# append "int a[] = {0, 1, 2}; return a[0];" 0
+# append "int a[] = {0, 1, 2}; return a[1];" 1
+# append "int a[] = {0, 1, 2}; return a[2];" 2
 # append "char str[] = \"hello\"; return sizeof(str);" "6"
 # assert(65, ({ int a[4] = "ABC"; a[0]; }), "int a[4] = \"ABC\"; a[0];");
 # assert(66, ({ int a[4] = "ABC"; a[1]; }), "int a[4] = \"ABC\"; a[1];");

@@ -1,6 +1,6 @@
 #include "10cc.h"
 
-Program *prog;               // The program
+Program *prog;
 Scope *scope;                // Current scope
 Node null_stmt = {ND_NULL};  // NOP node
 int str_label_cnt = 1;
@@ -126,6 +126,55 @@ Var *param_declaration() {
     return new_var(type, tok->str, true);
 }
 
+typedef struct {
+    Vector *arr;
+    Node *scalar;
+} InitValue;
+
+Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
+    Node *init;
+    if (ltype->kind == TY_ARRAY) {
+        Vector *stmts = vec_create();
+        for (int i = 0; i < rhs->arr->len; i++) {
+            Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+            Node *deref = new_node_uniop(ND_DEREF, add);
+            vec_push(stmts, assign_init(deref, ltype->ptr_to, vec_get(rhs->arr, i)));
+        }
+        init = new_node_block(stmts);
+    } else {
+        if (!rhs->scalar) {
+            // int a = {3};
+            if (rhs->arr->len == 0) {
+                error_at(token->loc, "Scalar initializer cannot be empty");
+            }
+            if (rhs->arr->len > 1) {
+                error_at(token->loc, "Excess elements in scalar initializer");
+            }
+            rhs->scalar = ((InitValue *)vec_get(rhs->arr, 0))->scalar;
+        }
+        Node *assign = new_node_binop(ND_ASSIGN, lhs, rhs->scalar);
+        init = new_node_uniop(ND_EXPR_STMT, assign);
+    }
+    return init;
+}
+
+InitValue *read_init() {
+    InitValue *val = calloc(1, sizeof(InitValue));;
+    if (consume(TK_RESERVED, "{")) {
+        Vector *inits = vec_create();
+        while (!consume(TK_RESERVED, "}")) {
+            if (inits->len > 0) {
+                expect(TK_RESERVED, ",");
+            }
+            vec_push(inits, read_init());
+        }
+        val->arr = inits;
+    } else {
+        val->scalar = expr();
+    }
+    return val;
+}
+
 /*
  * declaration = T IDENT ("[" NUM? "]")* ("=" init)? ";"
  */
@@ -138,41 +187,45 @@ Node *declaration() {
     Node *init = &null_stmt;
     if (consume(TK_RESERVED, "=")) {
         Node *lhs = new_node_varref(var);
-        if (type->kind == TY_ARRAY) {
-            if (consume(TK_RESERVED, "{")) {
-                Vector *stmts = vec_create();
-                for (int i = 0;; i++) {
-                    if (consume(TK_RESERVED, "}")) {
-                        if (type->array_size != -1) {
-                            for (int j = i; j < type->array_size; j++) {
-                                Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
-                                Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0));
-                                vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
-                            }
-                        }
-                        break;
-                    }
-                    if (type->array_size != -1 && i >= type->array_size) {
-                        error("excess elements in array inititalizer");
-                    }
-                    if (stmts->len > 0) {
-                        expect(TK_RESERVED, ",");
-                    }
-                    Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
-                    Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr());
-                    vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
-                }
-                if (type->array_size == -1) {
-                    type->array_size = stmts->len;
-                    type->size = type->ptr_to->size * type->array_size;
-                }
-                return new_node_block(stmts);
-            } else if (consume(TK_RESERVED, "\"")) {
-                // TODO: string literal
-            }
-        } else {
-            init = new_node_uniop(ND_EXPR_STMT, new_node_binop(ND_ASSIGN, lhs, assign()));
-        }
+        InitValue *rhs = read_init();
+
+        init = assign_init(lhs, type, rhs);
+
+        // if (type->kind == TY_ARRAY) {
+        //     if (consume(TK_RESERVED, "{")) {
+        //         Vector *stmts = vec_create();
+        //         for (int i = 0;; i++) {
+        //             if (consume(TK_RESERVED, "}")) {
+        //                 if (type->array_size != -1) {
+        //                     for (int j = i; j < type->array_size; j++) {
+        //                         Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
+        //                         Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0));
+        //                         vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
+        //                     }
+        //                 }
+        //                 break;
+        //             }
+        //             if (type->array_size != -1 && i >= type->array_size) {
+        //                 error("excess elements in array inititalizer");
+        //             }
+        //             if (stmts->len > 0) {
+        //                 expect(TK_RESERVED, ",");
+        //             }
+        //             Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+        //             Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr());
+        //             vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
+        //         }
+        //         if (type->array_size == -1) {
+        //             type->array_size = stmts->len;
+        //             type->size = type->ptr_to->size * type->array_size;
+        //         }
+        //         return new_node_block(stmts);
+        //     } else if (consume(TK_RESERVED, "\"")) {
+        //         // TODO: string literal
+        //     }
+        // } else {
+        //     init = new_node_uniop(ND_EXPR_STMT, new_node_binop(ND_ASSIGN, lhs, assign()));
+        // }
     }
     expect(TK_RESERVED, ";");
     return init;
