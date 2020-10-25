@@ -97,6 +97,8 @@ append "return ({ int x; x=3; x; });" 3
 append "return ({ int a; a=3; a = a + 3; });" 6
 append "return ({ int a; a = 0; while (a < 10) a = a + 1; a; });" 10
 append "return ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; });" 55
+append "return add(1, ({ int a[3] = {0, 1, 2}; a[1]; }));" 2
+append "return add(0, ({ int i = 0; for (;i < 10;) {i = i + 1; } i; }));" 10
 append "int x = 3; return x;" 3
 append "int x = foo(); return x;" 3
 append "char x = 3; return x;" 3

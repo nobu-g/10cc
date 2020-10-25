@@ -146,7 +146,8 @@ Node *declaration() {
                         if (type->array_size != -1) {
                             for (int j = i; j < type->array_size; j++) {
                                 Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
-                                vec_push(stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0)));
+                                Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0));
+                                vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
                             }
                         }
                         break;
@@ -158,7 +159,8 @@ Node *declaration() {
                         expect(TK_RESERVED, ",");
                     }
                     Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
-                    vec_push(stmts, new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr()));
+                    Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr());
+                    vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
                 }
                 if (type->array_size == -1) {
                     type->array_size = stmts->len;
@@ -169,7 +171,7 @@ Node *declaration() {
                 // TODO: string literal
             }
         } else {
-            init = new_node_binop(ND_ASSIGN, lhs, assign());
+            init = new_node_uniop(ND_EXPR_STMT, new_node_binop(ND_ASSIGN, lhs, assign()));
         }
     }
     expect(TK_RESERVED, ";");
@@ -282,9 +284,11 @@ Node *stmt() {
         Node *node = new_node(ND_FOR);
         enter_scope();
         expect(TK_RESERVED, "(");
-        node->init = consume(TK_RESERVED, ";") ? &null_stmt : expr_stmt();
-        node->cond = peek(TK_RESERVED, ";") ? new_node_num(1) : expr(); expect(TK_RESERVED, ";");
-        node->upd = peek(TK_RESERVED, ")") ? &null_stmt : expr();
+        node->init = peek(TK_RESERVED, ";") ? &null_stmt : expr_stmt();
+        expect(TK_RESERVED, ";");
+        node->cond = peek(TK_RESERVED, ";") ? new_node_num(1) : expr();
+        expect(TK_RESERVED, ";");
+        node->upd = peek(TK_RESERVED, ")") ? &null_stmt : expr_stmt();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         leave_scope();
@@ -294,16 +298,19 @@ Node *stmt() {
     } else if (consume(TK_RESERVED, ";")) {
         return &null_stmt;
     } else {
-        return expr_stmt();
+        Node *node = expr_stmt();
+        expect(TK_RESERVED, ";");
+        return node;
     }
 }
 
 /**
  * expr_stmt = expr ";"
+ * Expression statement is an expression that does not return any value.
+ * If the value of an expression is dismissed, the expression must be a statement expression.
  */
 Node *expr_stmt() {
     Node *node = new_node_uniop(ND_EXPR_STMT, expr());
-    expect(TK_RESERVED, ";");
     return node;
 }
 
@@ -456,6 +463,8 @@ Node *primary() {
             while (!consume(TK_RESERVED, "}")) {
                 vec_push(node->stmts, stmt());
             }
+            Node *last = vec_get(node->stmts, node->stmts->len - 1);
+            vec_set(node->stmts, node->stmts->len - 1, last->lhs);
             leave_scope();
         } else {
             node = expr();
