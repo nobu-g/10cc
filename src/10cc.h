@@ -210,6 +210,7 @@ void gen_x86_64(Program *prog);
 /*
  * utils.c
  */
+void debug(char *fmt, ...);
 char *format(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);

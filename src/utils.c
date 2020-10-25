@@ -57,11 +57,14 @@ void error_at(char *loc, char *fmt, ...) {
     fprintf(stderr, "\n");
     exit(1);
 }
+
 void assert(bool cond, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     if (!cond) {
-        error(fmt, ap);
+        vfprintf(stderr, fmt, ap);
+        fprintf(stderr, "\n");
+        exit(1);
     }
 }
 

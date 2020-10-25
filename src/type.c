@@ -125,10 +125,11 @@ Node *do_walk(Node *node, bool decay) {
             if (rty->kind == TY_PTR) {
                 assert(same_type(lty, rty), "Incompatible pointer: '%s' vs '%s'", lty->str, rty->str);
                 node = scale_ptr(ND_DIV, node, lty);
+                node->type = type_int;  // FIXME: should be long type
             } else {
                 node->rhs = scale_ptr(ND_MUL, node->rhs, lty);
+                node->type = lty;
             }
-            node->type = lty;
         } else {
             assert(rty->kind != TY_PTR, "Invalid operands: '%s' and '%s'", lty->str, rty->str);
             node->type = type_int;
