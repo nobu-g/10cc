@@ -229,14 +229,15 @@ Var *new_var(Type *type, char *name, bool is_local) {
         if (!same_type(type, var->type)) {
             error_at(token->loc, "Redefinition of '%s' with a different type: '%s' vs '%s'", name, type->str,
                      var->type->str);
+        } else {
+            error_at(token->loc, "Redefinition of '%s'", name);
         }
-    } else {
-        var = calloc(1, sizeof(Var));
-        var->is_local = is_local;
-        var->name = name;
-        var->type = type;
-        map_insert(vars, name, var);
     }
+    var = calloc(1, sizeof(Var));
+    var->is_local = is_local;
+    var->name = name;
+    var->type = type;
+    map_insert(vars, name, var);
     return var;
 }
 

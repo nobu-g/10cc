@@ -76,7 +76,6 @@ append "char a; char b; char c; char d; a = 1; b = 2; c = 3; d = 4; char *p; p =
 append "char arr[4]; return &arr[3] - &arr[0];" 3
 append "int arr[4]; return &arr[3] - &arr[0];" 3
 append "int a = 1; int b = 2; return sizeof(&a - &b);" 4  # FIXME: 8
-append "int a; int a; a = 2; int a; return a;" 2
 append "int a; a = 1; char b; b = 9; if (1) {int b; b = 32; a = 100; } if(1) {char b; b = 5;} return a + b;" 109
 append "int x[2][3]; int *y; y=x[0]; y[0]=0; return x[0][0];" 0
 append "int x[2][3]; int *y; y=x[0]; y[1]=1; return x[0][1];" 1
@@ -135,7 +134,7 @@ int f2(int m) {return m+1;}
 int fact(int m); int fact(int n) {if (n < 2) return 1; else return n * fact(n-1);}
 int fibo(int n) { if (n == 1) return 1; else if (n == 0) return 1; else return fibo(n-1) + fibo(n-2); }
 int gvar;
-int *pg; int *pg;
+int *pg;
 int garr[3];
 char first(char *str) { return str[0]; }
 
