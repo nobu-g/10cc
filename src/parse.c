@@ -140,6 +140,17 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
             Node *deref = new_node_uniop(ND_DEREF, add);
             vec_push(stmts, assign_init(deref, ltype->ptr_to, vec_get(rhs->arr, i)));
         }
+        if (ltype->array_size == -1) {
+            ltype->array_size = rhs->arr->len;
+            ltype->size = ltype->ptr_to->size * ltype->array_size;
+        }
+        for (int i = rhs->arr->len; i < ltype->array_size; i++) {
+            Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+            Node *deref = new_node_uniop(ND_DEREF, add);
+            InitValue *val = calloc(1, sizeof(InitValue));
+            val->scalar = new_node_num(0);
+            vec_push(stmts, assign_init(deref, ltype->ptr_to, val));
+        }
         init = new_node_block(stmts);
     } else {
         if (!rhs->scalar) {
@@ -159,7 +170,7 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
 }
 
 InitValue *read_init() {
-    InitValue *val = calloc(1, sizeof(InitValue));;
+    InitValue *val = calloc(1, sizeof(InitValue));
     if (consume(TK_RESERVED, "{")) {
         Vector *inits = vec_create();
         while (!consume(TK_RESERVED, "}")) {
@@ -188,44 +199,7 @@ Node *declaration() {
     if (consume(TK_RESERVED, "=")) {
         Node *lhs = new_node_varref(var);
         InitValue *rhs = read_init();
-
         init = assign_init(lhs, type, rhs);
-
-        // if (type->kind == TY_ARRAY) {
-        //     if (consume(TK_RESERVED, "{")) {
-        //         Vector *stmts = vec_create();
-        //         for (int i = 0;; i++) {
-        //             if (consume(TK_RESERVED, "}")) {
-        //                 if (type->array_size != -1) {
-        //                     for (int j = i; j < type->array_size; j++) {
-        //                         Node* add = new_node_binop(ND_ADD, lhs, new_node_num(j));
-        //                         Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), new_node_num(0));
-        //                         vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
-        //                     }
-        //                 }
-        //                 break;
-        //             }
-        //             if (type->array_size != -1 && i >= type->array_size) {
-        //                 error("excess elements in array inititalizer");
-        //             }
-        //             if (stmts->len > 0) {
-        //                 expect(TK_RESERVED, ",");
-        //             }
-        //             Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
-        //             Node *assign = new_node_binop(ND_ASSIGN, new_node_uniop(ND_DEREF, add), expr());
-        //             vec_push(stmts, new_node_uniop(ND_EXPR_STMT, assign));
-        //         }
-        //         if (type->array_size == -1) {
-        //             type->array_size = stmts->len;
-        //             type->size = type->ptr_to->size * type->array_size;
-        //         }
-        //         return new_node_block(stmts);
-        //     } else if (consume(TK_RESERVED, "\"")) {
-        //         // TODO: string literal
-        //     }
-        // } else {
-        //     init = new_node_uniop(ND_EXPR_STMT, new_node_binop(ND_ASSIGN, lhs, assign()));
-        // }
     }
     expect(TK_RESERVED, ";");
     return init;
@@ -235,13 +209,17 @@ Type *read_array(Type *base) {
     Vector *sizes = vec_create();
     while (consume(TK_RESERVED, "[")) {
         Token *tok = consume(TK_NUM, NULL);
-        vec_pushi(sizes, tok ? tok->val : -1);  // tentatively, array size is -1 when omitted
+        vec_pushi(sizes, tok ? tok->val : -1);  // array size is set to -1 when omitted
         expect(TK_RESERVED, "]");
     }
     // a[2][3] means 2-length array of 3-length array of int
     Type *type = base;
     for (int i = sizes->len - 1; i >= 0; i--) {
-        type = ary_of(type, vec_geti(sizes, i));
+        int array_size = vec_geti(sizes, i);
+        if (type->array_size == -1) {
+            error_at(token->loc, "Array has incomplete element type: '%s'", type->str);
+        }
+        type = ary_of(type, array_size);
     }
     return type;
 }

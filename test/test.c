@@ -111,6 +111,21 @@ int test94() { int x = {3}; return x; }
 int test95() { int a[3] = {0, 1, 2}; return a[0]; }
 int test96() { int a[3] = {0, 1, 2}; return a[1]; }
 int test97() { int a[3] = {0, 1, 2}; return a[2]; }
+int test98() { int a[3] = {3}; return a[0]; }
+int test99() { int a[3] = {3}; return a[1]; }
+int test100() { int a[3] = {3}; return a[2]; }
+int test101() { int a[] = {0, 1, 2}; return a[0]; }
+int test102() { int a[] = {0, 1, 2}; return a[1]; }
+int test103() { int a[] = {0, 1, 2}; return a[2]; }
+int test104() { int a[2][3] = {{0, 1, 2}, {3, 4, 5}}; return a[1][1]; }
+int test105() { int a[][3] = {{0, 1, 2}, {3, 4, 5}}; return a[1][0]; }
+int test106() { int a[][3] = {{1, 2}, {3}}; return a[0][0]; }
+int test107() { int a[][3] = {{1, 2}, {3}}; return a[0][1]; }
+int test108() { int a[][3] = {{1, 2}, {3}}; return a[0][2]; }
+int test109() { int a[][3] = {{1, 2}, {3}}; return a[1][0]; }
+int test110() { int a[][3] = {{1, 2}, {3}}; return a[1][1]; }
+int test111() { int a[][3] = {{1, 2}, {3}}; return a[1][2]; }
+int test112() { int a[][2][3] = {{{}, {1, 2, 3}}, {{}, {}}}; return a[0][1][2]; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -211,6 +226,21 @@ int main() {
     assert(0, test95(), "{ int a[3] = {0, 1, 2}; return a[0]; }");
     assert(1, test96(), "{ int a[3] = {0, 1, 2}; return a[1]; }");
     assert(2, test97(), "{ int a[3] = {0, 1, 2}; return a[2]; }");
+    assert(3, test98(), "{ int a[3] = {3}; return a[0]; }");
+    assert(0, test99(), "{ int a[3] = {3}; return a[1]; }");
+    assert(0, test100(), "{ int a[3] = {3}; return a[2]; }");
+    assert(0, test101(), "{ int a[] = {0, 1, 2}; return a[0]; }");
+    assert(1, test102(), "{ int a[] = {0, 1, 2}; return a[1]; }");
+    assert(2, test103(), "{ int a[] = {0, 1, 2}; return a[2]; }");
+    assert(4, test104(), "{ int a[2][3] = {{0, 1, 2}, {3, 4, 5}}; return a[1][1]; }");
+    assert(3, test105(), "{ int a[][3] = {{0, 1, 2}, {3, 4, 5}}; return a[1][0]; }");
+    assert(1, test106(), "{ int a[][3] = {{1, 2}, {3}}; return a[0][0]; }");
+    assert(2, test107(), "{ int a[][3] = {{1, 2}, {3}}; return a[0][1]; }");
+    assert(0, test108(), "{ int a[][3] = {{1, 2}, {3}}; return a[0][2]; }");
+    assert(3, test109(), "{ int a[][3] = {{1, 2}, {3}}; return a[1][0]; }");
+    assert(0, test110(), "{ int a[][3] = {{1, 2}, {3}}; return a[1][1]; }");
+    assert(0, test111(), "{ int a[][3] = {{1, 2}, {3}}; return a[1][2]; }");
+    assert(3, test112(), "{ int a[][2][3] = {{{}, {1, 2, 3}}, {{}, {}}}; return a[0][1][2]; }");
 
     return 0;
 }

@@ -54,6 +54,7 @@ Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
 Node *do_walk(Node *node, bool decay) {
     assert(node, "Cannot walk on NULL node\n");
+    Node *new;
     switch (node->kind) {
     case ND_IF:
         node->cond = walk(node->cond);
@@ -97,46 +98,48 @@ Node *do_walk(Node *node, bool decay) {
         node->lhs = walk(node->lhs);
         return node;
     case ND_ADD:
-        node->lhs = walk(node->lhs);
-        node->rhs = walk(node->rhs);
-        if (node->rhs->type->kind == TY_PTR) {
-            Node *tmp = node->lhs;
-            node->lhs = node->rhs;
-            node->rhs = tmp;
+        new = new_node(node->kind);  // create a new node for non-idempotent node
+        new->lhs = walk(node->lhs);
+        new->rhs = walk(node->rhs);
+        if (new->rhs->type->kind == TY_PTR) {
+            Node *tmp = new->lhs;
+            new->lhs = new->rhs;
+            new->rhs = tmp;
         }
-        check_integer(node->rhs);
+        check_integer(new->rhs);
 
-        if (node->lhs->type->kind == TY_PTR) {
-            node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->type);
-            node->rhs->type = type_int;
-            node->type = node->lhs->type;
+        if (new->lhs->type->kind == TY_PTR) {
+            new->rhs = scale_ptr(ND_MUL, new->rhs, new->lhs->type);
+            new->rhs->type = type_int;
+            new->type = new->lhs->type;
         } else {
-            node->type = type_int;
+            new->type = type_int;
         }
-        return node;
+        return new;
     case ND_SUB:
-        node->lhs = walk(node->lhs);
-        node->rhs = walk(node->rhs);
+        new = new_node(node->kind);
+        new->lhs = walk(node->lhs);
+        new->rhs = walk(node->rhs);
 
-        Type *lty = node->lhs->type;
-        Type *rty = node->rhs->type;
+        Type *lty = new->lhs->type;
+        Type *rty = new->rhs->type;
 
         if (lty->kind == TY_PTR) {
             if (rty->kind == TY_PTR) {
                 assert(same_type(lty, rty), "Incompatible pointer: '%s' vs '%s'", lty->str, rty->str);
-                node = scale_ptr(ND_DIV, node, lty);
-                node->type = type_int;  // FIXME: should be long type
+                new = scale_ptr(ND_DIV, new, lty);
+                new->type = type_int;  // FIXME: should be long type
             } else {
-                node->rhs = scale_ptr(ND_MUL, node->rhs, lty);
-                node->type = lty;
+                new->rhs = scale_ptr(ND_MUL, new->rhs, lty);
+                new->type = lty;
             }
         } else {
             assert(rty->kind != TY_PTR, "Invalid operands: '%s' and '%s'", lty->str, rty->str);
-            node->type = type_int;
+            new->type = type_int;
         }
-        return node;
+        return new;
     case ND_ASSIGN:
-        node->lhs = walk(node->lhs);
+        node->lhs = walk_nodecay(node->lhs);
         check_referable(node->lhs);
         node->rhs = walk(node->rhs);
         node->type = node->lhs->type;
@@ -159,13 +162,14 @@ Node *do_walk(Node *node, bool decay) {
         node->type = ptr_to(node->lhs->type);
         return node;
     case ND_DEREF:
-        node->lhs = walk(node->lhs);
-        assert(node->lhs->type->kind == TY_PTR, "Operand must be a pointer, but got '%s'", node->lhs->type->str);
-        node->type = node->lhs->type->ptr_to;
+        new = new_node(node->kind);
+        new->lhs = walk(node->lhs);
+        assert(new->lhs->type->kind == TY_PTR, "Operand must be a pointer, but got '%s'", new->lhs->type->str);
+        new->type = new->lhs->type->ptr_to;
         if (decay) {
-            node = ary_to_ptr(node);
+            new = ary_to_ptr(new);
         }
-        return node;
+        return new;
     case ND_RETURN:
         node->lhs = walk(node->lhs);
         return node;
@@ -224,11 +228,17 @@ Type *ptr_to(Type *dest) {
     return type;
 }
 
-Type *ary_of(Type *base, int size) {
+Type *ary_of(Type *base, int array_size) {
     char *s = (base->kind == TY_ARRAY || base->kind == TY_PTR) ? "" : " ";
-    Type *type = new_ty(TY_ARRAY, base->size * size, format("%s%s[%d]", base->str, s, size));
+    char *repr;
+    if (array_size != -1) {
+        repr = format("%s%s[%d]", base->str, s, array_size);
+    } else {
+        repr = format("%s%s[]", base->str, s);
+    }
+    Type *type = new_ty(TY_ARRAY, base->size * array_size, repr);
     type->ptr_to = base;
-    type->array_size = size;
+    type->array_size = array_size;
     return type;
 }
 

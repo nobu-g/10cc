@@ -188,6 +188,7 @@ bool at_eof();
  * parse.c
  */
 Program *parse();
+Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);

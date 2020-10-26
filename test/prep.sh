@@ -106,18 +106,26 @@ append "int x = {3}; return x;" 3
 append "int a[3] = {0, 1, 2}; return a[0];" 0
 append "int a[3] = {0, 1, 2}; return a[1];" 1
 append "int a[3] = {0, 1, 2}; return a[2];" 2
-# append "int a[3] = {3}; return a[0];" 3
-# append "int a[3] = {3}; return a[1];" 0
-# append "int a[3] = {3}; return a[2];" 0
-# append "int a[] = {0, 1, 2}; return a[0];" 0
-# append "int a[] = {0, 1, 2}; return a[1];" 1
-# append "int a[] = {0, 1, 2}; return a[2];" 2
+append "int a[3] = {3}; return a[0];" 3
+append "int a[3] = {3}; return a[1];" 0
+append "int a[3] = {3}; return a[2];" 0
+append "int a[] = {0, 1, 2}; return a[0];" 0
+append "int a[] = {0, 1, 2}; return a[1];" 1
+append "int a[] = {0, 1, 2}; return a[2];" 2
+append "int a[2][3] = {{0, 1, 2}, {3, 4, 5}}; return a[1][1];" 4
+append "int a[][3] = {{0, 1, 2}, {3, 4, 5}}; return a[1][0];" 3
+append "int a[][3] = {{1, 2}, {3}}; return a[0][0];" 1
+append "int a[][3] = {{1, 2}, {3}}; return a[0][1];" 2
+append "int a[][3] = {{1, 2}, {3}}; return a[0][2];" 0
+append "int a[][3] = {{1, 2}, {3}}; return a[1][0];" 3
+append "int a[][3] = {{1, 2}, {3}}; return a[1][1];" 0
+append "int a[][3] = {{1, 2}, {3}}; return a[1][2];" 0
+append "int a[][2][3] = {{{}, {1, 2, 3}}, {{}, {}}}; return a[0][1][2];" 3
 # append "char str[] = \"hello\"; return sizeof(str);" "6"
 # assert(65, ({ int a[4] = "ABC"; a[0]; }), "int a[4] = \"ABC\"; a[0];");
 # assert(66, ({ int a[4] = "ABC"; a[1]; }), "int a[4] = \"ABC\"; a[1];");
 # assert(67, ({ int a[4] = "ABC"; a[2]; }), "int a[4] = \"ABC\"; a[2];");
 # assert(0, ({ int a[4] = "ABC"; a[3]; }), "int a[4] = \"ABC\"; a[3];");
-# assert(4, ({ char a; a = 4; a; }), "char a; a = 4; a;");
 
 # cast
 # append "char c = 3; return add(c, c + 1);" 7
