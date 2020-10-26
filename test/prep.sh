@@ -87,8 +87,6 @@ append "int a[2][3]; return sizeof(*a);" 12
 append "return 1 /*+ 1*/;" 1
 append "char* foo; foo = \"bar\"; return 0;" 0
 append "return first(\"bcd\") - first(\"abc\");" 1
-append "char *str = \"hello\"; return sizeof(str);" 8
-append "char *str = \"hello\"; return str[0];" "104"
 append "return ({ 0; });" 0
 append "return ({ 0; 1; 2; });" 2
 append "({ 0; return 1; 2; }); return 3;" 1
@@ -121,11 +119,11 @@ append "int a[][3] = {{1, 2}, {3}}; return a[1][0];" 3
 append "int a[][3] = {{1, 2}, {3}}; return a[1][1];" 0
 append "int a[][3] = {{1, 2}, {3}}; return a[1][2];" 0
 append "int a[][2][3] = {{{}, {1, 2, 3}}, {{}, {}}}; return a[0][1][2];" 3
-# append "char str[] = \"hello\"; return sizeof(str);" "6"
-# assert(65, ({ int a[4] = "ABC"; a[0]; }), "int a[4] = \"ABC\"; a[0];");
-# assert(66, ({ int a[4] = "ABC"; a[1]; }), "int a[4] = \"ABC\"; a[1];");
-# assert(67, ({ int a[4] = "ABC"; a[2]; }), "int a[4] = \"ABC\"; a[2];");
-# assert(0, ({ int a[4] = "ABC"; a[3]; }), "int a[4] = \"ABC\"; a[3];");
+append "char a[4] = \"ABC\"; return a[0];" 65
+append "char a[4] = \"ABC\"; return a[1];" 66
+append "char a[4] = \"ABC\"; return a[2];" 67
+append "char a[4] = \"ABC\"; return a[3];" 0
+append "char str[] = \"hello\"; return sizeof(str);" 6
 
 # cast
 # append "char c = 3; return add(c, c + 1);" 7

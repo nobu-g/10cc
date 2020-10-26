@@ -5,6 +5,11 @@ Scope *scope;                // Current scope
 Node null_stmt = {ND_NULL};  // NOP node
 int str_label_cnt = 1;
 
+typedef struct {
+    Vector *arr;  // Vector<InitValue *>
+    Node *scalar;
+} InitValue;
+
 void top_level();
 Var *param_declaration();
 Node *declaration();
@@ -38,22 +43,9 @@ Node *new_node_num(int val);
 
 Type *read_type();
 
-Scope *new_scope() {
-    Scope *sc = calloc(1, sizeof(Scope));
-    sc->parent = NULL;
-    sc->children = vec_create();
-    sc->lvars = map_create();
-    return sc;
-}
-
-void enter_scope() {
-    Scope *sc = new_scope();
-    sc->parent = scope;
-    vec_push(scope->children, sc);
-    scope = sc;
-}
-
-void leave_scope() { scope = scope->parent; }
+Scope *new_scope();
+void enter_scope();
+void leave_scope();
 
 /**
  * program = top_level* EOF
@@ -126,11 +118,6 @@ Var *param_declaration() {
     return new_var(type, tok->str, true);
 }
 
-typedef struct {
-    Vector *arr;
-    Node *scalar;
-} InitValue;
-
 Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
     Node *init;
     if (ltype->kind == TY_ARRAY) {
@@ -178,6 +165,19 @@ InitValue *read_init() {
                 expect(TK_RESERVED, ",");
             }
             vec_push(inits, read_init());
+        }
+        val->arr = inits;
+    } else if (consume(TK_RESERVED, "\"")) {
+        Token* tok = consume(TK_STR, NULL);
+        expect(TK_RESERVED, "\"");
+        Vector *inits = vec_create();
+        for (int i = 0;; i++) {
+            InitValue *ch = calloc(1, sizeof(InitValue));
+            ch->scalar = new_node_num(tok->str[i]);  // FIXME: character literal
+            vec_push(inits, ch);
+            if (!tok->str[i]) {
+                break;
+            }
         }
         val->arr = inits;
     } else {
@@ -633,3 +633,20 @@ Type *read_type() {
     }
     return type;
 }
+
+Scope *new_scope() {
+    Scope *sc = calloc(1, sizeof(Scope));
+    sc->parent = NULL;
+    sc->children = vec_create();
+    sc->lvars = map_create();
+    return sc;
+}
+
+void enter_scope() {
+    Scope *sc = new_scope();
+    sc->parent = scope;
+    vec_push(scope->children, sc);
+    scope = sc;
+}
+
+void leave_scope() { scope = scope->parent; }
