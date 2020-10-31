@@ -124,11 +124,13 @@ int test107() { int a[][3] = {{1, 2}, {3}}; return a[1][0]; }
 int test108() { int a[][3] = {{1, 2}, {3}}; return a[1][1]; }
 int test109() { int a[][3] = {{1, 2}, {3}}; return a[1][2]; }
 int test110() { int a[][2][3] = {{{}, {1, 2, 3}}, {{}, {}}}; return a[0][1][2]; }
-int test111() { int a[4] = "ABC"; return a[0]; }
-int test112() { int a[4] = "ABC"; return a[1]; }
-int test113() { int a[4] = "ABC"; return a[2]; }
-int test114() { int a[4] = "ABC"; return a[3]; }
+int test111() { char a[4] = "ABC"; return a[0]; }
+int test112() { char a[4] = "ABC"; return a[1]; }
+int test113() { char a[4] = "ABC"; return a[2]; }
+int test114() { char a[4] = "ABC"; return a[3]; }
 int test115() { char str[] = "hello"; return sizeof(str); }
+int test116() { char c = 3; return add(c, c + 1); }
+int test117() { return add(0, first("ABC")); }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -242,11 +244,13 @@ int main() {
     assert(0, test108(), "{ int a[][3] = {{1, 2}, {3}}; return a[1][1]; }");
     assert(0, test109(), "{ int a[][3] = {{1, 2}, {3}}; return a[1][2]; }");
     assert(3, test110(), "{ int a[][2][3] = {{{}, {1, 2, 3}}, {{}, {}}}; return a[0][1][2]; }");
-    assert(65, test111(), "{ int a[4] = \"ABC\"; return a[0]; }");
-    assert(66, test112(), "{ int a[4] = \"ABC\"; return a[1]; }");
-    assert(67, test113(), "{ int a[4] = \"ABC\"; return a[2]; }");
-    assert(0, test114(), "{ int a[4] = \"ABC\"; return a[3]; }");
+    assert(65, test111(), "{ char a[4] = \"ABC\"; return a[0]; }");
+    assert(66, test112(), "{ char a[4] = \"ABC\"; return a[1]; }");
+    assert(67, test113(), "{ char a[4] = \"ABC\"; return a[2]; }");
+    assert(0, test114(), "{ char a[4] = \"ABC\"; return a[3]; }");
     assert(6, test115(), "{ char str[] = \"hello\"; return sizeof(str); }");
+    assert(7, test116(), "{ char c = 3; return add(c, c + 1); }");
+    assert(65, test117(), "{ return add(0, first(\"ABC\")); }");
 
     return 0;
 }

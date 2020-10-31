@@ -21,6 +21,8 @@
 Type *type_char = &(Type){TY_CHAR, 1, NULL, 0, "char"};
 Type *type_int = &(Type){TY_INT, 4, NULL, 0, "int"};
 
+bool is_compatible(Type *t1, Type *t2);
+
 void check_integer(Node *node) {
     TypeKind kind = node->type->kind;
     assert(kind == TY_INT || kind == TY_CHAR, "Not an integer type: '%s'", node->type->str);
@@ -177,7 +179,7 @@ Node *do_walk(Node *node, bool decay) {
         for (int i = 0; i < node->args->len; i++) {
             Node *arg = walk(vec_get(node->args, i));
             Type *type_expected = ((Var *)vec_get(node->func->args, i))->type;
-            assert(same_type(arg->type, type_expected), "Argument type mismatch: '%s' vs '%s'", arg->type->str,
+            assert(is_compatible(arg->type, type_expected), "Argument type mismatch: '%s' vs '%s'", arg->type->str,
                    type_expected->str);
             vec_set(node->args, i, arg);
         }
@@ -242,17 +244,30 @@ Type *ary_of(Type *base, int array_size) {
     return type;
 }
 
-bool same_type(Type *x, Type *y) {
-    if (x->kind != y->kind) {
+bool same_type(Type *t1, Type *t2) {
+    if (t1->kind != t2->kind) {
         return false;
     }
 
-    switch (x->kind) {
+    switch (t1->kind) {
     case TY_PTR:
-        return same_type(x->ptr_to, y->ptr_to);
+        return same_type(t1->ptr_to, t2->ptr_to);
     case TY_ARRAY:
-        return x->array_size == y->array_size && same_type(x->ptr_to, y->ptr_to);
+        return t1->array_size == t2->array_size && same_type(t1->ptr_to, t2->ptr_to);
     default:
         return true;
     }
+}
+
+bool is_compatible(Type *t1, Type *t2) {
+    if (t1->kind == TY_CHAR || t1->kind == TY_INT) {
+        return (t2->kind == TY_CHAR || t2->kind == TY_INT);
+    }
+    assert(t1->kind == TY_PTR || t1->kind == TY_ARRAY, "Unknown type kind: %d", t1->kind);
+    if (t2->kind == TY_CHAR || t2->kind == TY_INT) {
+        return false;
+    } else {
+        return same_type(t1, t2);
+    }
+    return false;
 }
