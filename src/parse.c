@@ -426,6 +426,7 @@ Node *mul() {
 
 /*
  * unary = ("+" | "-" | "&" | "*") unary
+ *       | ("++" | "--") unary
  *       | "sizeof" "(" (T|expr) ")"
  *       | "sizeof" unary
  *       | postfix
@@ -439,6 +440,14 @@ Node *unary() {
         return new_node_uniop(ND_ADDR, unary());
     } else if (consume(TK_RESERVED, "*")) {
         return new_node_uniop(ND_DEREF, unary());
+    } else if (consume(TK_RESERVED, "++")) {
+        // `++x` is compiled as `x = x + 1`
+        Node *node = unary();
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1)));
+    } else if (consume(TK_RESERVED, "--")) {
+        // `--x` is compiled as `x = x - 1`
+        Node *node = unary();
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1)));
     } else if (consume(TK_RESERVED, "sizeof")) {
         if (consume(TK_RESERVED, "(")) {
             Node *node;

@@ -10,7 +10,7 @@ This project is a reimplementation of [rui314's 9cc](https://github.com/rui314/9
 ## Features
 - operations
   - binary: +, -, *, /, ==, !=, <=, >=, <, >, =
-  - unary: +, -, &, *, sizeof
+  - unary: +, -, &, *, sizeof, ++, --
 - statements
   - if, for, while, return
 - types
