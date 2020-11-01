@@ -20,6 +20,8 @@ This project is a reimplementation of [rui314's 9cc](https://github.com/rui314/9
 - variable scope
 - string literal
 - comments
+- GNU statement expression
+- initialization of incomplete array
 
 ## Reference
 [低レイヤを知りたい人のためのCコンパイラ作成入門](https://www.sigbus.info/compilerbook)
