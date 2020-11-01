@@ -102,7 +102,7 @@ char *read_reserved(char *p) {
         }
     }
 
-    char *multi_ops[] = {"<=", ">=", "==", "!="};
+    char *multi_ops[] = {"<=", ">=", "==", "!=", "++", "--"};
     for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
         int len = strlen(multi_ops[i]);
         if (startswith(p, multi_ops[i])) {

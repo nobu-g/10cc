@@ -131,6 +131,10 @@ int test114() { char a[4] = "ABC"; return a[3]; }
 int test115() { char str[] = "hello"; return sizeof(str); }
 int test116() { char c = 3; return add(c, c + 1); }
 int test117() { return add(0, first("ABC")); }
+int test118() { int x = 2; x++; return x; }
+int test119() { int x = 2; x--; return x; }
+int test120() { int x = 2; return x++; }
+int test121() { int x = 2; return x--; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -251,6 +255,10 @@ int main() {
     assert(6, test115(), "{ char str[] = \"hello\"; return sizeof(str); }");
     assert(7, test116(), "{ char c = 3; return add(c, c + 1); }");
     assert(65, test117(), "{ return add(0, first(\"ABC\")); }");
+    assert(3, test118(), "{ int x = 2; x++; return x; }");
+    assert(1, test119(), "{ int x = 2; x--; return x; }");
+    assert(2, test120(), "{ int x = 2; return x++; }");
+    assert(2, test121(), "{ int x = 2; return x--; }");
 
     return 0;
 }

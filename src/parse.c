@@ -457,22 +457,33 @@ Node *unary() {
 }
 
 /**
- * postfix = primary
- *         | primary ("[" expr "]")+
+ * postfix = primary ("[" expr "]" | "++" | "--")*
  */
 Node *postfix() {
     Node *node = primary();
 
     while (true) {
-        // x[y] -> *(x + y)
         if (consume(TK_RESERVED, "[")) {
+            // `x[y]` is compiled as `*(x + y)`
             Node *sbsc = expr();
             expect(TK_RESERVED, "]");
             Node *sum = new_node_binop(ND_ADD, node, sbsc);
             node = new_node_uniop(ND_DEREF, sum);
-        } else {
-            return node;
+            continue;
         }
+        if (consume(TK_RESERVED, "++")) {
+            // `x++` is compiled as `(x = x + 1) - 1`
+            Node *assign = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1)));
+            node = new_node_binop(ND_SUB, assign, new_node_num(1));
+            continue;
+        }
+        if (consume(TK_RESERVED, "--")) {
+            // `x--` is compiled as `(x = x - 1) + 1`
+            Node *assign = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1)));
+            node = new_node_binop(ND_ADD, assign, new_node_num(1));
+            continue;
+        }
+        return node;
     }
 }
 
