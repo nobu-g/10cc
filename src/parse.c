@@ -206,22 +206,14 @@ Node *declaration() {
 }
 
 Type *read_array(Type *base) {
-    Vector *sizes = vec_create();
-    while (consume(TK_RESERVED, "[")) {
-        Token *tok = consume(TK_NUM, NULL);
-        vec_pushi(sizes, tok ? tok->val : -1);  // array size is set to -1 when omitted
-        expect(TK_RESERVED, "]");
+    if (!consume(TK_RESERVED, "[")) {
+        return base;
     }
     // a[2][3] means 2-length array of 3-length array of int
-    Type *type = base;
-    for (int i = sizes->len - 1; i >= 0; i--) {
-        int array_size = vec_geti(sizes, i);
-        if (type->array_size == -1) {
-            error_at(token->loc, "Array has incomplete element type: '%s'", type->str);
-        }
-        type = ary_of(type, array_size);
-    }
-    return type;
+    Token *tok = consume(TK_NUM, NULL);
+    expect(TK_RESERVED, "]");
+    base = read_array(base);
+    return ary_of(base, tok ? tok->val : -1);  // array size is set to -1 when omitted
 }
 
 Func *new_func(Type *ret_type, char *name, Vector *args) {
