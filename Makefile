@@ -1,7 +1,7 @@
 OUTDIR := build
 SRCDIR := src
 TARGET := $(OUTDIR)/10cc
-CFLAGS := -std=c11 -g -static
+CFLAGS := -std=c11 -g -static -Wall
 
 SRCS := $(wildcard $(SRCDIR)/*.c)
 HEADERS := $(wildcard $(SRCDIR)/*.h)

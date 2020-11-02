@@ -208,6 +208,7 @@ Node *do_walk(Node *node, bool decay) {
         return node;
     default:
         error("Unknown node kind: %d", node->kind);
+        return node;  // never reach here
     }
 }
 

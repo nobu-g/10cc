@@ -104,7 +104,6 @@ char *read_reserved(char *p) {
 
     char *multi_ops[] = {"<=", ">=", "==", "!=", "++", "--"};
     for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
-        int len = strlen(multi_ops[i]);
         if (startswith(p, multi_ops[i])) {
             return multi_ops[i];
         }
@@ -112,7 +111,6 @@ char *read_reserved(char *p) {
 
     char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&", "."};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
-        int len = strlen(single_ops[i]);
         if (startswith(p, single_ops[i])) {
             return single_ops[i];
         }
@@ -177,6 +175,9 @@ Token *expect(TokenKind kind, char *str) {
                 break;
             case TK_NUM:
                 kind_name = "number";
+                break;
+            case TK_STR:
+                kind_name = "string literal";
                 break;
             case TK_EOF:
                 kind_name = "EOF";

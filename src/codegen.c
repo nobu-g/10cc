@@ -299,6 +299,7 @@ char *reg(int size) {
         return regs[r];
     default:
         error("Invalid register size: %d", size);
+        return NULL;  // never reach here
     }
 }
 
@@ -312,5 +313,6 @@ char *argreg(int r, int size) {
         return argregs[r];
     default:
         error("Invalid arg register size: %d", size);
+        return NULL;  // never reach here
     }
 }
