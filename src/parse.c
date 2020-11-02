@@ -1,7 +1,8 @@
 #include "10cc.h"
 
 Program *prog;
-Scope *scope;                // Current scope
+Scope *var_scope;  // current variable scope
+Scope *tag_scope;  // current tag scope
 Node null_stmt = {ND_NULL};  // NOP node
 int str_label_cnt = 1;
 
@@ -16,6 +17,7 @@ Node *declaration();
 Type *read_array(Type *base);
 Func *new_func(Type *ret_type, char *name, Vector *args);
 Var *new_var(Type *type, char *name, bool is_local);
+Type *new_tag(char *name, Type *type);
 
 Node *stmt();
 Node *expr_stmt();
@@ -31,6 +33,7 @@ Node *primary();
 
 Func *find_func(char *name);
 Var *find_var(char *name);
+Type *find_tag(char *name);
 
 Node *new_node(NodeKind kind);
 Node *new_node_uniop(NodeKind kind, Node *lhs);
@@ -72,7 +75,8 @@ void top_level() {
     Token *tok = expect(TK_IDENT, NULL);
     if (consume(TK_RESERVED, "(")) {
         // function declaration/definintion
-        scope = new_scope();
+        var_scope = new_scope();
+        tag_scope = new_scope();
         // parse arguments
         Vector *args = vec_create();
         while (!consume(TK_RESERVED, ")")) {
@@ -191,18 +195,24 @@ InitValue *read_init() {
  */
 Node *declaration() {
     Type *type = read_type();
+
+    if (consume(TK_RESERVED, ";")) {
+        return &null_stmt;
+    }
+
     Token *tok = expect(TK_IDENT, NULL);
     type = read_array(type);
     Var *var = new_var(type, tok->str, true);
 
-    Node *init = &null_stmt;
-    if (consume(TK_RESERVED, "=")) {
-        Node *lhs = new_node_varref(var);
-        InitValue *rhs = read_init();
-        init = assign_init(lhs, type, rhs);
+    if (consume(TK_RESERVED, ";")) {
+        return &null_stmt;
     }
-    expect(TK_RESERVED, ";");
-    return init;
+
+    expect(TK_RESERVED, "=");
+
+    Node *lhs = new_node_varref(var);
+    InitValue *rhs = read_init();
+    return assign_init(lhs, type, rhs);
 }
 
 Type *read_array(Type *base) {
@@ -240,13 +250,13 @@ Func *new_func(Type *ret_type, char *name, Vector *args) {
     fn->name = name;
     fn->args = args;
     fn->ret_type = ret_type;
-    fn->scope = scope;
+    fn->scope = var_scope;
     map_insert(prog->funcs, name, fn);
     return fn;
 }
 
 Var *new_var(Type *type, char *name, bool is_local) {
-    Map *vars = is_local ? scope->lvars : prog->gvars;
+    Map *vars = is_local ? var_scope->lvars : prog->gvars;
     Var *var = map_at(vars, name);
     if (var) {
         if (!same_type(type, var->type)) {
@@ -262,6 +272,17 @@ Var *new_var(Type *type, char *name, bool is_local) {
     var->type = type;
     map_insert(vars, name, var);
     return var;
+}
+
+Type *new_tag(char *name, Type *type) {
+    if (type->kind != TY_STRUCT) {
+        error_at(token->loc, "Non-structure type cannot create a new tag");
+    }
+    if (map_at(tag_scope->lvars, name)) {
+        error_at(token->loc, "Redefinition of '%s'", name);
+    }
+    map_insert(tag_scope->lvars, name, type);
+    return type;
 }
 
 /**
@@ -568,7 +589,7 @@ Func *find_func(char *name) {
 
 Var *find_var(char *name) {
     Var *var = NULL;
-    Scope *sc = scope;
+    Scope *sc = var_scope;
     while (sc) {
         var = map_at(sc->lvars, name);
         if (var) {
@@ -583,6 +604,22 @@ Var *find_var(char *name) {
         error_at(token->loc, "Undefined variable: '%s'", name);
     }
     return var;
+}
+
+Type *find_tag(char *name) {
+    Type *tag = NULL;
+    Scope *sc = tag_scope;
+    while (sc) {
+        tag = map_at(sc->lvars, name);
+        if (tag) {
+            break;
+        }
+        sc = sc->parent;
+    }
+    if (!tag) {
+        error_at(token->loc, "Undefined struct: '%s'", name);
+    }
+    return tag;
 }
 
 Node *new_node(NodeKind kind) {
@@ -641,13 +678,22 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Member *new_struct_member(char *name, Type *type) {
+/**
+ * struct-member = T IDENT ("[" NUM "]")* ";"
+ */
+Member *read_struct_member() {
     Member *mem = calloc(1, sizeof(Member));
-    mem->name = name;
-    mem->type = type;
+    Type *type = read_type();
+    mem->name = expect(TK_IDENT, NULL)->str;
+    mem->type = read_array(type);
+    expect(TK_RESERVED, ";");
     return mem;
 }
 
+/**
+ * T = ("int" | "char" | "void" | struct-decl) "*"*
+ * struct-decl = "struct" IDENT? ("{" struct-member* "}")?
+ */
 Type *read_type() {
     Type *type;
     if (consume(TK_RESERVED, "int")) {
@@ -655,23 +701,27 @@ Type *read_type() {
     } else if (consume(TK_RESERVED, "char")) {
         type = type_char;
     } else if (consume(TK_RESERVED, "struct")) {
+        Token *tag = consume(TK_IDENT, NULL);
+        if (tag && !peek(TK_RESERVED, "{")) {
+            return find_tag(tag->str);
+        }
+
         expect(TK_RESERVED, "{");
         Map *members = map_create();
         int offset = 0;
         while (!consume(TK_RESERVED, "}")) {
-            Type *memty = read_type();
-            Token *tok = expect(TK_IDENT, NULL);
-            memty = read_array(memty);
-            Member *mem = new_struct_member(tok->str, memty);
+            Member *mem = read_struct_member();
             if (map_at(members, mem->name)) {
                 error_at(token->loc, "duplicate member: '%s'", mem->name);
             }
             mem->offset = offset;
             offset += mem->type->size;
             map_insert(members, mem->name, mem);
-            expect(TK_RESERVED, ";");
         }
         type = new_type_struct(members);
+        if (tag) {
+            new_tag(tag->str, type);
+        }
     } else {
         error_at(token->loc, "Invalid type");
     }
@@ -690,10 +740,18 @@ Scope *new_scope() {
 }
 
 void enter_scope() {
-    Scope *sc = new_scope();
-    sc->parent = scope;
-    vec_push(scope->children, sc);
-    scope = sc;
+    Scope *var_sc = new_scope();
+    var_sc->parent = var_scope;
+    vec_push(var_scope->children, var_sc);
+    var_scope = var_sc;
+
+    Scope *tag_sc = new_scope();
+    tag_sc->parent = tag_scope;
+    vec_push(tag_scope->children, tag_sc);
+    tag_scope = tag_sc;
 }
 
-void leave_scope() { scope = scope->parent; }
+void leave_scope() {
+    var_scope = var_scope->parent;
+    tag_scope = tag_scope->parent;
+}

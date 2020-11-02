@@ -139,8 +139,12 @@ int test122() { int x = 2; return ++x; }
 int test123() { int x = 2; return --x; }
 int test124() { int x = 2; return x++ + ++x; }
 int test125() { int x = 2; int *p = &x; ++*p; return x; }
-int test126() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }
-int test127() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }
+int test126() { struct {int a; char b;} X; return sizeof(X); }
+int test127() { struct {int a; char b;} X[3]; return sizeof(X); }
+int test128() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }
+int test129() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }
+int test130() { struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.a; }
+int test131() { struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.b; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -269,8 +273,12 @@ int main() {
     assert(1, test123(), "{ int x = 2; return --x; }");
     assert(6, test124(), "{ int x = 2; return x++ + ++x; }");
     assert(3, test125(), "{ int x = 2; int *p = &x; ++*p; return x; }");
-    assert(1, test126(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }");
-    assert(2, test127(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }");
+    assert(5, test126(), "{ struct {int a; char b;} X; return sizeof(X); }");
+    assert(15, test127(), "{ struct {int a; char b;} X[3]; return sizeof(X); }");
+    assert(1, test128(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }");
+    assert(2, test129(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }");
+    assert(1, test130(), "{ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.a; }");
+    assert(2, test131(), "{ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.b; }");
 
     return 0;
 }
