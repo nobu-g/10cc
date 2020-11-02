@@ -51,5 +51,7 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-tmp*
+test/*
+!test/prep.sh
+!test/*.c
 10cc
