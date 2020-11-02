@@ -178,6 +178,10 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
         case ND_STR:
             fprintf(stderr, "STR(\"%s\")\n", node->strl->str);
             break;
+        case ND_MEMBER:
+            fprintf(stderr, "MEMBER(type: %s, name: %s)\n", node->member->type->str, node->member->name);
+            draw_node_tree(node->lhs, depth + 1, "");
+            break;
         case ND_ADDR:
             fprintf(stderr, "ADDR\n");
             draw_node_tree(node->lhs, depth + 1, "");

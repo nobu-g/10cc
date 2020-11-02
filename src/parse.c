@@ -458,7 +458,7 @@ Node *unary() {
 }
 
 /**
- * postfix = primary ("[" expr "]" | "++" | "--")*
+ * postfix = primary ("[" expr "]" | "++" | "--" | ".")*
  */
 Node *postfix() {
     Node *node = primary();
@@ -482,6 +482,16 @@ Node *postfix() {
             // `x--` is compiled as `(x = x - 1) + 1`
             Node *assign = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1)));
             node = new_node_binop(ND_ADD, assign, new_node_num(1));
+            continue;
+        }
+        if (consume(TK_RESERVED, ".")) {
+            Token *tok = expect(TK_IDENT, NULL);
+            Member *member = map_at(node->var->type->members, tok->str);
+            if (!member) {
+                error_at(token->loc, "No member named '%s'", tok->str);
+            }
+            node = new_node_uniop(ND_MEMBER, node);
+            node->member = member;
             continue;
         }
         return node;
@@ -631,12 +641,37 @@ Node *new_node_num(int val) {
     return node;
 }
 
+Member *new_struct_member(char *name, Type *type) {
+    Member *mem = calloc(1, sizeof(Member));
+    mem->name = name;
+    mem->type = type;
+    return mem;
+}
+
 Type *read_type() {
     Type *type;
     if (consume(TK_RESERVED, "int")) {
         type = type_int;
     } else if (consume(TK_RESERVED, "char")) {
         type = type_char;
+    } else if (consume(TK_RESERVED, "struct")) {
+        expect(TK_RESERVED, "{");
+        Map *members = map_create();
+        int offset = 0;
+        while (!consume(TK_RESERVED, "}")) {
+            Type *memty = read_type();
+            Token *tok = expect(TK_IDENT, NULL);
+            memty = read_array(memty);
+            Member *mem = new_struct_member(tok->str, memty);
+            if (map_at(members, mem->name)) {
+                error_at(token->loc, "duplicate member: '%s'", mem->name);
+            }
+            mem->offset = offset;
+            offset += mem->type->size;
+            map_insert(members, mem->name, mem);
+            expect(TK_RESERVED, ";");
+        }
+        type = new_type_struct(members);
     } else {
         error_at(token->loc, "Invalid type");
     }

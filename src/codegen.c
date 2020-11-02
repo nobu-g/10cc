@@ -120,6 +120,7 @@ void gen(Node *node) {
         printf("  push rax\n");
         return;
     case ND_VARREF:
+    case ND_MEMBER:
         gen_lval(node);
         gen_load(node->type);
         return;
@@ -263,6 +264,12 @@ void gen_lval(Node *node) {
         break;
     case ND_DEREF:
         gen(node->lhs);
+        break;
+    case ND_MEMBER:
+        gen_lval(node->lhs);
+        printf("  pop rax\n");
+        printf("  lea rax, [rax+%d]\n", node->member->offset);
+        printf("  push rax\n");
         break;
     default:
         error("Referable node expected");

@@ -69,14 +69,16 @@ typedef enum {
     TY_CHAR,
     TY_PTR,
     TY_ARRAY,
+    TY_STRUCT,
 } TypeKind;
 
 struct Type {
     TypeKind kind;
     size_t size;  // CHAR: 1, INT: 4, PTR: 8, ARRAY: ptr_to->size * array_size
+    char *str;  // string which represents this type
     Type *ptr_to;
     int array_size;  // number of array elements
-    char *str;  // string which represents this type
+    Map *members;  // Map<char *, Member *>
 };
 
 typedef struct {
@@ -90,6 +92,12 @@ typedef struct {
     char *label;
     char *str;
 } StrLiteral;
+
+typedef struct {
+    char *name;
+    Type *type;
+    int offset;
+} Member;
 
 typedef enum {
     ND_ADD,        // +
@@ -112,6 +120,7 @@ typedef enum {
     ND_VARREF,     // variable reference
     ND_STR,        // string literal
     ND_NUM,        // immediate value
+    ND_MEMBER,     // . (struct member access)
     ND_ADDR,       // unary &
     ND_DEREF,      // unary *
     ND_SIZEOF,     // sizeof
@@ -145,6 +154,7 @@ struct Node {
     Type *type;  // used only if node is expr
     Var *var;    // used only if kind = ND_VARREF
     StrLiteral *strl;  // used only if kind = ND_STR
+    Member *member;  // used only if kind = ND_MEMBER
 };
 
 struct Scope {
@@ -201,6 +211,7 @@ extern Type *type_int;
 void add_type(Program *prog);
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int size);
+Type *new_type_struct(Map *members);
 bool same_type(Type *x, Type *y);
 
 /*

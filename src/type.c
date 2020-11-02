@@ -18,8 +18,8 @@
 //
 // - Reject bad assignments, such as `1=2+3`.
 
-Type *type_char = &(Type){TY_CHAR, 1, NULL, 0, "char"};
-Type *type_int = &(Type){TY_INT, 4, NULL, 0, "int"};
+Type *type_char = &(Type){TY_CHAR, 1, "char", NULL, 0, NULL};
+Type *type_int = &(Type){TY_INT, 4, "int", NULL, 0, NULL};
 
 bool is_compatible(Type *t1, Type *t2);
 
@@ -30,7 +30,7 @@ void check_integer(Node *node) {
 
 void check_referable(Node *node) {
     NodeKind kind = node->kind;
-    assert(kind == ND_VARREF || kind == ND_DEREF, "Not a referable type: '%s", node->type->str);
+    assert(kind == ND_VARREF || kind == ND_DEREF || kind == ND_MEMBER, "Not a referable type: '%s'", node->type->str);
 }
 
 Node *scale_ptr(int op, Node *base, Type *type) {
@@ -158,6 +158,11 @@ Node *do_walk(Node *node, bool decay) {
         check_integer(node->rhs);
         node->type = type_int;
         return node;
+    case ND_MEMBER:
+        node->lhs = walk(node->lhs);
+        assert(node->lhs->type->kind == TY_STRUCT, "Member reference base type is not a structure");
+        node->type = node->member->type;
+        return node;
     case ND_ADDR:
         node->lhs = walk(node->lhs);
         check_referable(node->lhs);
@@ -215,7 +220,7 @@ void add_type(Program *prog) {
     }
 }
 
-Type *new_ty(TypeKind kind, int size, char *repr) {
+Type *new_type(TypeKind kind, int size, char *repr) {
     Type *type = calloc(1, sizeof(Type));
     type->kind = kind;
     type->size = size;
@@ -225,7 +230,7 @@ Type *new_ty(TypeKind kind, int size, char *repr) {
 
 Type *ptr_to(Type *dest) {
     char *s = (dest->kind == TY_ARRAY || dest->kind == TY_PTR) ? "" : " ";
-    Type *type = new_ty(TY_PTR, 8, format("%s%s*", dest->str, s));
+    Type *type = new_type(TY_PTR, 8, format("%s%s*", dest->str, s));
     type->ptr_to = dest;
     return type;
 }
@@ -238,9 +243,20 @@ Type *ary_of(Type *base, int array_size) {
     } else {
         repr = format("%s%s[]", base->str, s);
     }
-    Type *type = new_ty(TY_ARRAY, base->size * array_size, repr);
+    Type *type = new_type(TY_ARRAY, base->size * array_size, repr);
     type->ptr_to = base;
     type->array_size = array_size;
+    return type;
+}
+
+Type *new_type_struct(Map *members) {
+    size_t size = 0;
+    for (int i = 0; i < members->len; i++) {
+        Member *mem = vec_get(members->vals, i);
+        size += mem->type->size;
+    }
+    Type *type = new_type(TY_STRUCT, size, format("struct"));
+    type->members = members;
     return type;
 }
 

@@ -139,6 +139,8 @@ int test122() { int x = 2; return ++x; }
 int test123() { int x = 2; return --x; }
 int test124() { int x = 2; return x++ + ++x; }
 int test125() { int x = 2; int *p = &x; ++*p; return x; }
+int test126() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }
+int test127() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -267,6 +269,8 @@ int main() {
     assert(1, test123(), "{ int x = 2; return --x; }");
     assert(6, test124(), "{ int x = 2; return x++ + ++x; }");
     assert(3, test125(), "{ int x = 2; int *p = &x; ++*p; return x; }");
+    assert(1, test126(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }");
+    assert(2, test127(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }");
 
     return 0;
 }

@@ -94,7 +94,7 @@ void tokenize() {
 }
 
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof"};
+    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof", "struct"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !is_alnum(p[len])) {
@@ -110,7 +110,7 @@ char *read_reserved(char *p) {
         }
     }
 
-    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&", "."};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         int len = strlen(single_ops[i]);
         if (startswith(p, single_ops[i])) {
@@ -192,7 +192,7 @@ Token *expect(TokenKind kind, char *str) {
 }
 
 bool at_typename() {
-    return peek(TK_RESERVED, "int") || peek(TK_RESERVED, "char");
+    return peek(TK_RESERVED, "int") || peek(TK_RESERVED, "char") || peek(TK_RESERVED, "struct");
 }
 
 bool at_eof() {
