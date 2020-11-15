@@ -367,12 +367,24 @@ Node *expr_stmt() {
 Node *expr() { return assign(); }
 
 /**
- * assign = equality ("=" assign)?
+ * assign = equality (("=" | "+=" | "-=" | "*=" | "/=") assign)?
  */
 Node *assign() {
     Node *node = equality();
     if (consume(TK_RESERVED, "=")) {
-        node = new_node_binop(ND_ASSIGN, node, assign());
+        return new_node_binop(ND_ASSIGN, node, assign());
+    }
+    if (consume(TK_RESERVED, "+=")) {
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, assign()));
+    }
+    if (consume(TK_RESERVED, "-=")) {
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, assign()));
+    }
+    if (consume(TK_RESERVED, "*=")) {
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_MUL, node, assign()));
+    }
+    if (consume(TK_RESERVED, "/=")) {
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_DIV, node, assign()));
     }
     return node;
 }
