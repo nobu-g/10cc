@@ -45,6 +45,8 @@ Node *new_node_string(char *str);
 Node *new_node_num(int val);
 
 Type *read_type();
+Type *struct_decl();
+Member *read_struct_member();
 
 Scope *new_scope();
 void enter_scope();
@@ -479,7 +481,7 @@ Node *unary() {
 }
 
 /**
- * postfix = primary ("[" expr "]" | "++" | "--" | ".")*
+ * postfix = primary ("[" expr "]" | "++" | "--" | "." IDENT | "->" IDENT)*
  */
 Node *postfix() {
     Node *node = primary();
@@ -507,12 +509,20 @@ Node *postfix() {
         }
         if (consume(TK_RESERVED, ".")) {
             Token *tok = expect(TK_IDENT, NULL);
-            Member *member = map_at(node->var->type->members, tok->str);
-            if (!member) {
-                error_at(token->loc, "No member named '%s'", tok->str);
-            }
             node = new_node_uniop(ND_MEMBER, node);
-            node->member = member;
+            node->member_name = tok->str;
+            continue;
+        }
+        if (consume(TK_RESERVED, "->")) {
+            // `x->a` is compiled as `(*x).a`
+            Node *deref = new_node_uniop(ND_DEREF, node);
+            Token *tok = expect(TK_IDENT, NULL);
+            // Member *member = map_at(node->var->type->members, tok->str);
+            // if (!member) {
+            //     error_at(token->loc, "No member named '%s'", tok->str);
+            // }
+            node = new_node_uniop(ND_MEMBER, deref);
+            node->member_name = tok->str;
             continue;
         }
         return node;
@@ -679,6 +689,57 @@ Node *new_node_num(int val) {
 }
 
 /**
+ * T = ("int" | "char" | struct-decl) "*"*
+ */
+Type *read_type() {
+    Type *type;
+    if (consume(TK_RESERVED, "int")) {
+        type = type_int;
+    } else if (consume(TK_RESERVED, "char")) {
+        type = type_char;
+    } else if (peek(TK_RESERVED, "struct")) {
+        type = struct_decl();
+    } else {
+        error_at(token->loc, "Invalid type");
+    }
+    while (consume(TK_RESERVED, "*")) {
+        type = ptr_to(type);
+    }
+    return type;
+}
+
+/**
+ * struct-decl = "struct" IDENT? ("{" struct-member* "}")?
+ */
+Type *struct_decl() {
+    expect(TK_RESERVED, "struct");
+
+    Token *tag = consume(TK_IDENT, NULL);
+    if (tag && !peek(TK_RESERVED, "{")) {
+        return find_tag(tag->str);
+    }
+
+    expect(TK_RESERVED, "{");
+    Map *members = map_create();
+    int offset = 0;
+    while (!consume(TK_RESERVED, "}")) {
+        Member *mem = read_struct_member();
+        if (map_at(members, mem->name)) {
+            error_at(token->loc, "duplicate member: '%s'", mem->name);
+        }
+        mem->offset = offset;
+        offset += mem->type->size;
+        map_insert(members, mem->name, mem);
+    }
+
+    Type *type = new_type_struct(members);
+    if (tag) {
+        new_tag(tag->str, type);
+    }
+    return type;
+}
+
+/**
  * struct-member = T IDENT ("[" NUM "]")* ";"
  */
 Member *read_struct_member() {
@@ -688,47 +749,6 @@ Member *read_struct_member() {
     mem->type = read_array(type);
     expect(TK_RESERVED, ";");
     return mem;
-}
-
-/**
- * T = ("int" | "char" | "void" | struct-decl) "*"*
- * struct-decl = "struct" IDENT? ("{" struct-member* "}")?
- */
-Type *read_type() {
-    Type *type;
-    if (consume(TK_RESERVED, "int")) {
-        type = type_int;
-    } else if (consume(TK_RESERVED, "char")) {
-        type = type_char;
-    } else if (consume(TK_RESERVED, "struct")) {
-        Token *tag = consume(TK_IDENT, NULL);
-        if (tag && !peek(TK_RESERVED, "{")) {
-            return find_tag(tag->str);
-        }
-
-        expect(TK_RESERVED, "{");
-        Map *members = map_create();
-        int offset = 0;
-        while (!consume(TK_RESERVED, "}")) {
-            Member *mem = read_struct_member();
-            if (map_at(members, mem->name)) {
-                error_at(token->loc, "duplicate member: '%s'", mem->name);
-            }
-            mem->offset = offset;
-            offset += mem->type->size;
-            map_insert(members, mem->name, mem);
-        }
-        type = new_type_struct(members);
-        if (tag) {
-            new_tag(tag->str, type);
-        }
-    } else {
-        error_at(token->loc, "Invalid type");
-    }
-    while (consume(TK_RESERVED, "*")) {
-        type = ptr_to(type);
-    }
-    return type;
 }
 
 Scope *new_scope() {

@@ -145,6 +145,9 @@ int test128() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.a; }
 int test129() { struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }
 int test130() { struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.a; }
 int test131() { struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.b; }
+int test132() { struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; return pa->x; }
+int test133() { struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; return pa->y; }
+int test134() { struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; return a.x; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -279,6 +282,9 @@ int main() {
     assert(2, test129(), "{ struct {int a; char b;} X; X.a = 1; X.b = 2; return X.b; }");
     assert(1, test130(), "{ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.a; }");
     assert(2, test131(), "{ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; return x.b; }");
+    assert(1, test132(), "{ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; return pa->x; }");
+    assert(2, test133(), "{ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; return pa->y; }");
+    assert(1, test134(), "{ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; return a.x; }");
 
     return 0;
 }

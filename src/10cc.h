@@ -154,6 +154,7 @@ struct Node {
     Type *type;  // used only if node is expr
     Var *var;    // used only if kind = ND_VARREF
     StrLiteral *strl;  // used only if kind = ND_STR
+    char *member_name;  // used only if kind = ND_MEMBER
     Member *member;  // used only if kind = ND_MEMBER
 };
 

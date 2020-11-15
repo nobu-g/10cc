@@ -161,6 +161,9 @@ Node *do_walk(Node *node, bool decay) {
     case ND_MEMBER:
         node->lhs = walk(node->lhs);
         assert(node->lhs->type->kind == TY_STRUCT, "Member reference base type is not a structure");
+        Member *member = map_at(node->lhs->type->members, node->member_name);
+        assert(member, "No member named '%s'", node->member_name);
+        node->member = member;
         node->type = node->member->type;
         return node;
     case ND_ADDR:
