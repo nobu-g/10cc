@@ -196,6 +196,11 @@ bool at_typename();
 bool at_eof();
 
 /*
+ * preprocess.c
+ */
+Token *preprocess(Token *tok);
+
+/*
  * parse.c
  */
 Program *parse();

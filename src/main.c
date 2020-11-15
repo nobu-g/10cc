@@ -46,6 +46,7 @@ int main(int argc, char **argv) {
 #endif
 
     tokenize();
+    token = preprocess(token);
 #if DEBUG <= 2
     fprintf(stderr, "tokenized user input\n");
 #endif
