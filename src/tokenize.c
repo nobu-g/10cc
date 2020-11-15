@@ -1,6 +1,7 @@
 #include "10cc.h"
 
 Token *token;
+bool is_bol;
 
 bool startswith(char *p, char *q);
 bool is_alnum(char c);
@@ -12,8 +13,16 @@ void tokenize() {
     head.next = NULL;
     Token *cur = &head;
     char *p = user_input;
+    is_bol = true;
 
     while (*p) {
+
+        // skip newline
+        if (*p == '\n') {
+            p++;
+            is_bol = true;
+            continue;
+        }
         // skip space characters
         if (isspace(*p)) {
             p++;
@@ -109,7 +118,7 @@ char *read_reserved(char *p) {
         }
     }
 
-    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&", "."};
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&", ".", "#"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         if (startswith(p, single_ops[i])) {
             return single_ops[i];
@@ -134,7 +143,10 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     tok->kind = kind;
     tok->str = name;
     tok->loc = str;
+    tok->is_bol = is_bol;
+
     cur->next = tok;
+    is_bol = false;
     return tok;
 }
 

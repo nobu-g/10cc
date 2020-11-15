@@ -62,6 +62,7 @@ struct Token {
     int val;
     char *str;
     char *loc;
+    bool is_bol;
 };
 
 typedef enum {
