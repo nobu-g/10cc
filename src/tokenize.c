@@ -1,5 +1,6 @@
 #include "10cc.h"
 
+File *current_file;
 Token *token;
 bool is_bol;
 
@@ -8,11 +9,47 @@ bool is_alnum(char c);
 char *read_reserved(char *p);
 Token *new_token(TokenKind kind, Token *cur, char *str, int len);
 
-void tokenize() {
+File *new_file(char *name, char *contents) {
+  File *file = calloc(1, sizeof(File));
+  file->name = name;
+  file->contents = contents;
+  return file;
+}
+
+File *read_file(char* path) {
+    // open file
+    FILE* fp = fopen(path, "r");
+    if (!fp) error("cannot open %s: %s", path, strerror(errno));
+
+    // seek toward end, get file size, and seek again toward start
+    if (fseek(fp, 0, SEEK_END) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+    size_t size = ftell(fp);
+    if (fseek(fp, 0, SEEK_SET) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+
+    // move file content to buf
+    char* buf = calloc(1, size + 2);  // 2: \n\0
+    fread(buf, size, 1, fp);
+
+    // end file with \n and append \0
+    if (size == 0 || buf[size - 1] != '\n') {
+        buf[size++] = '\n';
+    }
+    buf[size] = '\0';
+    fclose(fp);
+    return new_file(path, buf);
+}
+
+Token *tokenize(File *file) {
+    current_file = file;
+
     Token head;
     head.next = NULL;
     Token *cur = &head;
-    char *p = user_input;
+    char *p = file->contents;
     is_bol = true;
 
     while (*p) {
@@ -79,7 +116,6 @@ void tokenize() {
 
         // read string literal
         if (*p == '"') {
-            cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
             int len = 0;
             while (p[len] && p[len] != '"') {
@@ -90,7 +126,6 @@ void tokenize() {
             }
             cur = new_token(TK_STR, cur, p, len);
             p += len;
-            cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
             continue;
         }
@@ -99,11 +134,11 @@ void tokenize() {
     }
 
     new_token(TK_EOF, cur, p, 0);
-    token = head.next;
+    return head.next;
 }
 
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof", "struct"};
+    char *kws[] = {"return", "if", "else", "while", "for", "int", "char", "sizeof", "struct", "include"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !is_alnum(p[len])) {
@@ -150,6 +185,10 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     return tok;
 }
 
+bool equal(Token *tok, char *str) {
+    return strcmp(tok->str, str) == 0;
+}
+
 // Returns the current token if it satisfies given conditions
 Token *peek(TokenKind kind, char *str) {
     if (token->kind != kind) {
@@ -157,7 +196,7 @@ Token *peek(TokenKind kind, char *str) {
     }
 
     if (str != NULL) {
-        if (strcmp(token->str, str) != 0) {
+        if (!equal(token, str)) {
             return NULL;
         }
     }
@@ -173,7 +212,7 @@ Token *consume(TokenKind kind, char *str) {
 }
 
 Token *expect(TokenKind kind, char *str) {
-    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
+    if (token->kind != kind || (str && !equal(token, str))) {
         if (str) {
             error_at(token->loc, "'%s' expected", str);
         } else {

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 
 // 0: TRACE
 // 1: DEBUG
@@ -47,6 +48,11 @@ typedef struct {
 Map *map_create();
 void map_insert(Map *map, char *key, void *val);
 void *map_at(Map *map, char *key);
+
+typedef struct {
+  char *name;
+  char *contents;
+} File;
 
 typedef enum {
     TK_RESERVED,  // operators and reserved words
@@ -180,21 +186,18 @@ typedef struct {
 } Program;
 
 /*
- * main.c
- */
-extern char *filename;
-extern char *user_input;
-
-/*
  * tokenize.c
  */
+extern File *current_file;
 extern Token *token;
-void tokenize();
+File *read_file(char *path);
+Token *tokenize(File *file);
 Token *peek(TokenKind kind, char *str);
 Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
 bool at_typename();
 bool at_eof();
+bool equal(Token *tok, char *str);
 
 /*
  * preprocess.c

@@ -27,7 +27,7 @@ void error(char *fmt, ...) {
 void error_at(char *loc, char *fmt, ...) {
     // find the start/end positions of the line
     char *start = loc;
-    while (user_input < start && start[-1] != '\n') {
+    while (current_file->contents < start && start[-1] != '\n') {
         start--;
     }
     char *end = loc;
@@ -37,14 +37,14 @@ void error_at(char *loc, char *fmt, ...) {
 
     // investigate the line number
     int line_num = 1;
-    for (char *p = user_input; p < start; p++) {
+    for (char *p = current_file->contents; p < start; p++) {
         if (*p == '\n') {
             line_num++;
         }
     }
 
     // report the line number with the file name
-    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+    int indent = fprintf(stderr, "%s:%d: ", current_file->name, line_num);
     fprintf(stderr, "%.*s\n", (int)(end - start), start);
 
     // show the error message with a pointer "^"

@@ -173,9 +173,8 @@ InitValue *read_init() {
             vec_push(inits, read_init());
         }
         val->arr = inits;
-    } else if (consume(TK_RESERVED, "\"")) {
+    } else if (peek(TK_STR, NULL)) {
         Token* tok = consume(TK_STR, NULL);
-        expect(TK_RESERVED, "\"");
         Vector *inits = vec_create();
         for (int i = 0;; i++) {
             InitValue *ch = calloc(1, sizeof(InitValue));
@@ -591,9 +590,8 @@ Node *primary() {
     }
 
     // string literal
-    if (consume(TK_RESERVED, "\"")) {
+    if (peek(TK_STR, NULL)) {
         Token* tok = consume(TK_STR, NULL);
-        expect(TK_RESERVED, "\"");
         return new_node_string(tok->str);
     }
 
