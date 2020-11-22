@@ -11,7 +11,7 @@ char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 int label_cnt = 0;
 
 void gen_gvar(Var *gvar);
-void gen_gvar_init(Type* type, int val);
+void gen_gvar_init(InitValue *iv);
 void gen_strl(StrLiteral *strl);
 void gen_func(Func *fn);
 int assign_lvar_offset(Scope *scope, int offset);
@@ -48,43 +48,45 @@ void gen_gvar(Var *gvar) {
     assert(!(gvar->is_local), "Local variable: '%s' found in data segment", gvar->name);
     printf("%s:\n", gvar->name);
     if (gvar->init) {
-        if (gvar->init->vector) {
-            for (int i = 0; i < gvar->init->vector->len; i++) {
-                InitValue *iv = vec_get(gvar->init->vector, i);
-                Node *scalar = iv->scalar;
-                if (scalar->kind == ND_STR) {
-                    printf("  .quad %s\n", scalar->strl->label);
-                } else {
-                    gen_gvar_init(gvar->type->ptr_to, scalar->val);
-                }
-            }
-        } else {
-            Node *scalar = gvar->init->scalar;
-            if (scalar->kind == ND_STR) {
-                printf("  .string \"%s\"\n", scalar->strl->str);
-            } else {
-                gen_gvar_init(gvar->type, scalar->val);
-            }
+        InitValue *iv = gvar->init;
+        if (iv->scalar && iv->scalar->kind == ND_STR) {
+            printf("  .string \"%s\"\n", iv->scalar->strl->str);
+            return;
         }
+        gen_gvar_init(iv);
     } else {
         printf("  .zero %ld\n", gvar->type->size);
     }
 }
 
-void gen_gvar_init(Type* type, int val) {
-    switch (type->size) {
-        case 1:
-            printf("  .byte 0x%x\n", val);
-            break;
-        case 2:
-        case 4:
-            printf("  .long %d\n", val);
-            break;
-        case 8:
-            printf("  .quad %d\n", val);
-            break;
-        default:
-            error("unknown type size: %d\n", type->size);
+void gen_gvar_init(InitValue *iv) {
+    if (iv->vector) {
+        for (int i = 0; i < iv->vector->len; i++) {
+            InitValue *elem = vec_get(iv->vector, i);
+            gen_gvar_init(elem);
+        }
+    } else {
+        Node *node = iv->scalar;
+        if (node->kind == ND_STR) {
+            printf("  .quad %s\n", node->strl->label);
+        } else if (node->kind == ND_NUM) {
+            switch (node->type->size) {
+            case 1:
+                printf("  .byte 0x%x\n", node->val);
+                break;
+            case 2:
+            case 4:
+                printf("  .long %d\n", node->val);
+                break;
+            case 8:
+                printf("  .quad %d\n", node->val);
+                break;
+            default:
+                error("unknown type size: %d\n", node->type->size);
+            }
+        } else {
+            error("Unsupported global variable initialization");
+        }
     }
 }
 

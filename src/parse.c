@@ -8,6 +8,7 @@ int str_label_cnt = 1;
 
 void top_level();
 Var *param_declaration();
+Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs);
 Node *const_expr();
 InitValue *read_gvar_init();
 Node *declaration();
@@ -194,11 +195,10 @@ InitValue *read_init() {
  *               | STR                 // string literal
  *               | NUM                 // immediate value
  */
-Node* const_primary() {
-    Node* node;
-    // case const_primary = "(" const_expr ")"
+Node *const_primary() {
+    // const_expr
     if (consume(TK_RESERVED, "(")) {
-        node = const_expr();
+        Node *node = const_expr();
         expect(TK_RESERVED, ")");
         return node;
     }

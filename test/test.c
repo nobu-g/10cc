@@ -23,6 +23,7 @@ int ginit = 3;
 int giarr[] = {1, 2, 3};
 char str[] = "ABC";
 char *strarr[] = {"str0", "str1", "str2"};
+int arrarr[2][2] = {{1, 2}, {3, 0}};
 
 int test0() { return 42; }
 int test1() { return 1 + 1; }
@@ -176,6 +177,11 @@ int test148() { return str[1]; }
 int test149() { return str[2]; }
 int test150() { return str[3]; }
 int test151() { return strarr[0][0]; }
+int test152() { return sizeof(arrarr); }
+int test153() { return arrarr[0][0]; }
+int test154() { return arrarr[0][1]; }
+int test155() { return arrarr[1][0]; }
+int test156() { return arrarr[1][1]; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -330,6 +336,11 @@ int main() {
     assert(67, test149(), "{ return str[2]; }");
     assert(0, test150(), "{ return str[3]; }");
     assert(115, test151(), "{ return strarr[0][0]; }");
+    assert(16, test152(), "{ return sizeof(arrarr); }");
+    assert(1, test153(), "{ return arrarr[0][0]; }");
+    assert(2, test154(), "{ return arrarr[0][1]; }");
+    assert(3, test155(), "{ return arrarr[1][0]; }");
+    assert(0, test156(), "{ return arrarr[1][1]; }");
 
     return 0;
 }
