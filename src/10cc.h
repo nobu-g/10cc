@@ -89,10 +89,16 @@ struct Type {
 };
 
 typedef struct {
+    Vector *vector;  // Vector<InitValue *>
+    Node *scalar;
+} InitValue;
+
+typedef struct {
     bool is_local;
     char *name;
     Type *type;
     int offset;  // offset from RBP
+    InitValue *init;
 } Var;
 
 typedef struct {

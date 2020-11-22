@@ -6,13 +6,10 @@ Scope *tag_scope;            // current tag scope
 Node null_stmt = {ND_NULL};  // NOP node
 int str_label_cnt = 1;
 
-typedef struct {
-    Vector *arr;  // Vector<InitValue *>
-    Node *scalar;
-} InitValue;
-
 void top_level();
 Var *param_declaration();
+Node *const_expr();
+InitValue *read_gvar_init();
 Node *declaration();
 Type *read_array(Type *base);
 Func *new_func(Type *ret_type, char *name, Vector *args);
@@ -109,8 +106,11 @@ void top_level() {
     } else {
         // global variable
         type = read_array(type);
+        Var *gvar = new_var(type, tok->str, false);
+        if (consume(TK_RESERVED, "=")) {
+            gvar->init = read_gvar_init();
+        }
         expect(TK_RESERVED, ";");
-        new_var(type, tok->str, false);
     }
 }
 
@@ -128,16 +128,16 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
     Node *init;
     if (ltype->kind == TY_ARRAY) {
         Vector *stmts = vec_create();
-        for (int i = 0; i < rhs->arr->len; i++) {
+        for (int i = 0; i < rhs->vector->len; i++) {
             Node *add = new_node_binop(ND_ADD, lhs, new_node_num(i));
             Node *deref = new_node_uniop(ND_DEREF, add);
-            vec_push(stmts, assign_init(deref, ltype->ptr_to, vec_get(rhs->arr, i)));
+            vec_push(stmts, assign_init(deref, ltype->ptr_to, vec_get(rhs->vector, i)));
         }
         if (ltype->array_size == -1) {
-            ltype->array_size = rhs->arr->len;
+            ltype->array_size = rhs->vector->len;
             ltype->size = ltype->ptr_to->size * ltype->array_size;
         }
-        for (int i = rhs->arr->len; i < ltype->array_size; i++) {
+        for (int i = rhs->vector->len; i < ltype->array_size; i++) {
             Node *add = new_node_binop(ND_ADD, lhs, new_node_num(i));
             Node *deref = new_node_uniop(ND_DEREF, add);
             InitValue *val = calloc(1, sizeof(InitValue));
@@ -148,13 +148,13 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
     } else {
         if (!rhs->scalar) {
             // int a = {3};
-            if (rhs->arr->len == 0) {
+            if (rhs->vector->len == 0) {
                 error_at(token->loc, "Scalar initializer cannot be empty");
             }
-            if (rhs->arr->len > 1) {
+            if (rhs->vector->len > 1) {
                 error_at(token->loc, "Excess elements in scalar initializer");
             }
-            rhs->scalar = ((InitValue *)vec_get(rhs->arr, 0))->scalar;
+            rhs->scalar = ((InitValue *)vec_get(rhs->vector, 0))->scalar;
         }
         Node *assign = new_node_binop(ND_ASSIGN, lhs, rhs->scalar);
         init = new_node_uniop(ND_EXPR_STMT, assign);
@@ -163,32 +163,75 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
 }
 
 InitValue *read_init() {
-    InitValue *val = calloc(1, sizeof(InitValue));
+    InitValue *iv = calloc(1, sizeof(InitValue));
     if (consume(TK_RESERVED, "{")) {
-        Vector *inits = vec_create();
+        iv->vector = vec_create();
         while (!consume(TK_RESERVED, "}")) {
-            if (inits->len > 0) {
+            if (iv->vector->len > 0) {
                 expect(TK_RESERVED, ",");
             }
-            vec_push(inits, read_init());
+            vec_push(iv->vector, read_init());
         }
-        val->arr = inits;
     } else if (peek(TK_STR, NULL)) {
         Token *tok = consume(TK_STR, NULL);
-        Vector *inits = vec_create();
+        iv->vector = vec_create();
         for (int i = 0;; i++) {
             InitValue *ch = calloc(1, sizeof(InitValue));
             ch->scalar = new_node_num(tok->str[i]);  // FIXME: character literal
-            vec_push(inits, ch);
+            vec_push(iv->vector, ch);
             if (!tok->str[i]) {
                 break;
             }
         }
-        val->arr = inits;
     } else {
-        val->scalar = expr();
+        iv->scalar = expr();
     }
-    return val;
+    return iv;
+}
+
+/**
+ * const_primary = "(" const_expr ")"  // expression
+ *               | STR                 // string literal
+ *               | NUM                 // immediate value
+ */
+Node* const_primary() {
+    Node* node;
+    // case const_primary = "(" const_expr ")"
+    if (consume(TK_RESERVED, "(")) {
+        node = const_expr();
+        expect(TK_RESERVED, ")");
+        return node;
+    }
+
+    // string literal
+    Token *tok = consume(TK_STR, NULL);
+    if (tok) {
+        return new_node_string(tok->str);
+    }
+
+    // immediate value
+    return new_node_num(expect(TK_NUM, NULL)->val);
+}
+
+/**
+ *  const_expr = const_primary
+ */
+Node *const_expr() { return const_primary(); }
+
+InitValue *read_gvar_init() {
+    InitValue *iv = calloc(1, sizeof(InitValue));
+    if (consume(TK_RESERVED, "{")) {
+        iv->vector = vec_create();
+        while (!consume(TK_RESERVED, "}")) {
+            if (iv->vector->len > 0) {
+                expect(TK_RESERVED, ",");
+            }
+            vec_push(iv->vector, read_gvar_init());
+        }
+    } else {
+        iv->scalar = const_expr();
+    }
+    return iv;
 }
 
 /*
@@ -590,8 +633,8 @@ Node *primary() {
     }
 
     // string literal
-    if (peek(TK_STR, NULL)) {
-        Token *tok = consume(TK_STR, NULL);
+    tok = consume(TK_STR, NULL);
+    if (tok) {
         return new_node_string(tok->str);
     }
 

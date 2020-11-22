@@ -11,6 +11,7 @@ char *argregs32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 int label_cnt = 0;
 
 void gen_gvar(Var *gvar);
+void gen_gvar_init(Type* type, int val);
 void gen_strl(StrLiteral *strl);
 void gen_func(Func *fn);
 int assign_lvar_offset(Scope *scope, int offset);
@@ -46,7 +47,45 @@ void gen_x86_64(Program *prog) {
 void gen_gvar(Var *gvar) {
     assert(!(gvar->is_local), "Local variable: '%s' found in data segment", gvar->name);
     printf("%s:\n", gvar->name);
-    printf("  .zero %zu\n", gvar->type->size);
+    if (gvar->init) {
+        if (gvar->init->vector) {
+            for (int i = 0; i < gvar->init->vector->len; i++) {
+                InitValue *iv = vec_get(gvar->init->vector, i);
+                Node *scalar = iv->scalar;
+                if (scalar->kind == ND_STR) {
+                    printf("  .quad %s\n", scalar->strl->label);
+                } else {
+                    gen_gvar_init(gvar->type->ptr_to, scalar->val);
+                }
+            }
+        } else {
+            Node *scalar = gvar->init->scalar;
+            if (scalar->kind == ND_STR) {
+                printf("  .string \"%s\"\n", scalar->strl->str);
+            } else {
+                gen_gvar_init(gvar->type, scalar->val);
+            }
+        }
+    } else {
+        printf("  .zero %ld\n", gvar->type->size);
+    }
+}
+
+void gen_gvar_init(Type* type, int val) {
+    switch (type->size) {
+        case 1:
+            printf("  .byte 0x%x\n", val);
+            break;
+        case 2:
+        case 4:
+            printf("  .long %d\n", val);
+            break;
+        case 8:
+            printf("  .quad %d\n", val);
+            break;
+        default:
+            error("unknown type size: %d\n", type->size);
+    }
 }
 
 void gen_strl(StrLiteral *strl) {
@@ -112,7 +151,7 @@ void gen(Node *node) {
         for (int i = 0; i < node->args->len; i++) {
             gen(vec_get(node->args, i));
         }
-        for (int i = node->args->len - 1; i >= 0 ; i--) {
+        for (int i = node->args->len - 1; i >= 0; i--) {
             printf("  pop %s\n", argreg(i, 8));  // "pop" instruction always moves 8 byte
         }
         printf("  mov al, 0\n");
@@ -278,7 +317,7 @@ void gen_lval(Node *node) {
 
 // Push the value of which the address is stored in the stack top
 void gen_load(Type *type) {
-    printf("  pop rax\n");  // set rax to the address of the variable
+    printf("  pop rax\n");                         // set rax to the address of the variable
     printf("  mov %s, [rax]\n", reg(type->size));  // load the value of the variable
     // When loaded to a 8bit register, such as AL, the upper 56 bits are not reset to zero.
     // So it is necessary to do sign extension in such case.

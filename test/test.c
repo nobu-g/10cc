@@ -19,6 +19,10 @@ int gvar;
 int *pg;
 int garr[3];
 char first(char *str) { return str[0]; }
+int ginit = 3;
+int giarr[] = {1, 2, 3};
+char str[] = "ABC";
+char *strarr[] = {"str0", "str1", "str2"};
 
 int test0() { return 42; }
 int test1() { return 1 + 1; }
@@ -163,6 +167,15 @@ int test139() { int arr[] = {0, 1, 2}; int *p = arr; p += 1; return *p; }
 int test140() { int arr[] = {0, 1, 2}; int *p = arr; p += 2; return *p; }
 int test141() { int a = 14; a *= 3; return a; }
 int test142() { int a = 42; a /= 3; return a; }
+int test143() { return ginit; }
+int test144() { return giarr[0]; }
+int test145() { return giarr[1]; }
+int test146() { return giarr[2]; }
+int test147() { return str[0]; }
+int test148() { return str[1]; }
+int test149() { return str[2]; }
+int test150() { return str[3]; }
+int test151() { return strarr[0][0]; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -308,6 +321,15 @@ int main() {
     assert(2, test140(), "{ int arr[] = {0, 1, 2}; int *p = arr; p += 2; return *p; }");
     assert(42, test141(), "{ int a = 14; a *= 3; return a; }");
     assert(14, test142(), "{ int a = 42; a /= 3; return a; }");
+    assert(3, test143(), "{ return ginit; }");
+    assert(1, test144(), "{ return giarr[0]; }");
+    assert(2, test145(), "{ return giarr[1]; }");
+    assert(3, test146(), "{ return giarr[2]; }");
+    assert(65, test147(), "{ return str[0]; }");
+    assert(66, test148(), "{ return str[1]; }");
+    assert(67, test149(), "{ return str[2]; }");
+    assert(0, test150(), "{ return str[3]; }");
+    assert(115, test151(), "{ return strarr[0][0]; }");
 
     return 0;
 }
