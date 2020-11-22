@@ -54,4 +54,5 @@ dkms.conf
 test/*
 !test/prep.sh
 !test/*.c
+!test/*.h
 10cc

@@ -182,6 +182,8 @@ int test153() { return arrarr[0][0]; }
 int test154() { return arrarr[0][1]; }
 int test155() { return arrarr[1][0]; }
 int test156() { return arrarr[1][1]; }
+int test157() { return include1; }
+int test158() { return include2; }
 
 int main() {
     assert(42, test0(), "{ return 42; }");
@@ -341,6 +343,8 @@ int main() {
     assert(2, test154(), "{ return arrarr[0][1]; }");
     assert(3, test155(), "{ return arrarr[1][0]; }");
     assert(0, test156(), "{ return arrarr[1][1]; }");
+    assert(11, test157(), "{ return include1; }");
+    assert(22, test158(), "{ return include2; }");
 
     return 0;
 }
