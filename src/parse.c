@@ -1,8 +1,8 @@
 #include "10cc.h"
 
 Program *prog;
-Scope *var_scope;  // current variable scope
-Scope *tag_scope;  // current tag scope
+Scope *var_scope;            // current variable scope
+Scope *tag_scope;            // current tag scope
 Node null_stmt = {ND_NULL};  // NOP node
 int str_label_cnt = 1;
 
@@ -129,7 +129,7 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
     if (ltype->kind == TY_ARRAY) {
         Vector *stmts = vec_create();
         for (int i = 0; i < rhs->arr->len; i++) {
-            Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+            Node *add = new_node_binop(ND_ADD, lhs, new_node_num(i));
             Node *deref = new_node_uniop(ND_DEREF, add);
             vec_push(stmts, assign_init(deref, ltype->ptr_to, vec_get(rhs->arr, i)));
         }
@@ -138,7 +138,7 @@ Node *assign_init(Node *lhs, Type *ltype, InitValue *rhs) {
             ltype->size = ltype->ptr_to->size * ltype->array_size;
         }
         for (int i = rhs->arr->len; i < ltype->array_size; i++) {
-            Node* add = new_node_binop(ND_ADD, lhs, new_node_num(i));
+            Node *add = new_node_binop(ND_ADD, lhs, new_node_num(i));
             Node *deref = new_node_uniop(ND_DEREF, add);
             InitValue *val = calloc(1, sizeof(InitValue));
             val->scalar = new_node_num(0);
@@ -174,7 +174,7 @@ InitValue *read_init() {
         }
         val->arr = inits;
     } else if (peek(TK_STR, NULL)) {
-        Token* tok = consume(TK_STR, NULL);
+        Token *tok = consume(TK_STR, NULL);
         Vector *inits = vec_create();
         for (int i = 0;; i++) {
             InitValue *ch = calloc(1, sizeof(InitValue));
@@ -205,15 +205,15 @@ Node *declaration() {
     type = read_array(type);
     Var *var = new_var(type, tok->str, true);
 
-    if (consume(TK_RESERVED, ";")) {
-        return &null_stmt;
+    Node *node = &null_stmt;
+    if (consume(TK_RESERVED, "=")) {
+        Node *lhs = new_node_varref(var);
+        InitValue *rhs = read_init();
+        node = assign_init(lhs, type, rhs);
     }
 
-    expect(TK_RESERVED, "=");
-
-    Node *lhs = new_node_varref(var);
-    InitValue *rhs = read_init();
-    return assign_init(lhs, type, rhs);
+    expect(TK_RESERVED, ";");
+    return node;
 }
 
 Type *read_array(Type *base) {
@@ -292,7 +292,7 @@ Type *new_tag(char *name, Type *type) {
  *      | "if" "(" expr ")" stmt ("else" stmt)?
  *      | "while" "(" expr ")" stmt
  *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
- *      | declaration ";"
+ *      | declaration
  *      | ";"
  *      | expr ";"
  */
@@ -591,7 +591,7 @@ Node *primary() {
 
     // string literal
     if (peek(TK_STR, NULL)) {
-        Token* tok = consume(TK_STR, NULL);
+        Token *tok = consume(TK_STR, NULL);
         return new_node_string(tok->str);
     }
 
