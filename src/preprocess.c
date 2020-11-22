@@ -38,10 +38,11 @@ Token *preprocess(Token *tok) {
             if (tok->kind != TK_STR) {
                 error_at(tok->loc, "filename expected");
             }
-            // read file
-            File *file = read_file(format("%s/%s", dirname(current_file->name), tok->str));
-            debug(file->name);
-            // append(cur, file_content);
+            char *path = format("%s/%s", dirname(current_file->name), tok->str);
+            File *file = read_file(path);
+            Token *tok2 = tokenize(file);
+            tok = append(tok2, tok->next);
+            continue;
         }
 
         if (tok->is_bol) {

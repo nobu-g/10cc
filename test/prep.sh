@@ -160,7 +160,7 @@ cat <<EOF
 /* */ #
 
 // include directive
-//#include "include1.h"
+#include "include1.h"
 
 int assert(int expected, int actual, char *code);
 
