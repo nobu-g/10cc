@@ -5,22 +5,23 @@ bool is_hash(Token *tok) {
 }
 
 Token *preprocess(Token *tok) {
-    Token *pre_tok = &(Token){};
-    pre_tok->next = tok;
-    Token *head = pre_tok;
+    Token head = {};
+    Token *cur = &head;
     while (tok->kind != TK_EOF) {
         if (!(tok->is_bol && is_hash(tok))) {
-            pre_tok = tok;
+            cur = cur->next = tok;
             tok = tok->next;
             continue;
         }
 
-        if (tok->next->is_bol) {
+        tok = tok->next;
+
+        if (tok->is_bol) {
             // do nothing for null directive
-            pre_tok->next = tok->next;
-            tok = tok->next;
             continue;
         }
+
+        error_at(tok->loc, "invalid preprocessor directive");
     }
-    return head->next;
+    return head.next;
 }
